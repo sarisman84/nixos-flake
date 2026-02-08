@@ -1,0 +1,46 @@
+{
+  lib,
+  pkgs,
+  config,
+  ...
+}:
+{
+  services.xserver.videoDrivers = [ "nvidia" ];
+
+  environment.systemPackages = with pkgs; [
+    vulkan-loader
+    vulkan-validation-layers
+    vulkan-tools
+  ];
+
+  environment.variables = {
+    GBM_BACKEND = "nvidia-drm";
+    LIBVA_DRIVER_NAME = "nvidia";
+    __GLX_VENDOR_LIBRARY_NAME = "nvidia";
+    __GL_GSYNC_ALLOWED = "1";
+    __GL_VRR_ALLOWED = "1";
+  };
+
+  #nixpkgs.config.cudaSupport = true;
+
+  hardware = {
+    nvidia = {
+      modesetting.enable = true;
+      powerManagement.enable = true; # Disable if issues with sleep/suspend
+      package = config.boot.kernelPackages.nvidiaPackages.latest;
+      nvidiaSettings = true;
+      open = true;
+    };
+
+    graphics = {
+      enable = true;
+      #driSupport = true;
+      enable32Bit = true;
+      extraPackages = with pkgs; [
+        nvidia-vaapi-driver
+        libvdpau-va-gl
+        libva-vdpau-driver
+      ];
+    };
+  };
+}
