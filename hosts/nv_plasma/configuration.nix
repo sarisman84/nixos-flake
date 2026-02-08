@@ -14,7 +14,7 @@
     # Include the results of the hardware scan.
     ./hardware-configuration.nix
     ./locale
-    ../../shared/modules/nivida
+    ../../shared/modules/nvida
     ./networking
     ./bluetooth
     ./audio
