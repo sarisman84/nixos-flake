@@ -44,15 +44,17 @@
       mkUsers = users: (
         let
           usersList = map(username : (import (usersDir + "/${username}")) users);
-          usersByName = builtins.lisToAttr(map((user: {name = user.name; value = user;}) usersList));
+          usersByName = builtins.lisToAttr(map((userDir: user: {name = userDir; value = user;}) users usersList));
         in  {
+           # Initialize all the users found for the nixos config
            users.users = builtins.mapAttr(username: user: {
              isNormalUser = true;
              home = "/home/${username}";
-             description = username;
+             description = user.name;
              extraGroups = user.groups or ["wheel"];
            }) usersByName;
-
+           
+           # Initialize all the users found for home manager to work
            home-manager.users = builtins.mapAttrs (
              username:{
                home.username = username;
@@ -72,6 +74,7 @@
           in lib.nixosSystem {
             inherit pkgs system;
             modules = [
+              "./shared/modules"
               (directory + "/configuration.nix")
               home-manager.nixosConfigurations.home-manager
               {
