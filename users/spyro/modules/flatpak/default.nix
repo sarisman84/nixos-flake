@@ -15,4 +15,6 @@
     services.flatpak = {
        enable = true;
     };
+
+
 }

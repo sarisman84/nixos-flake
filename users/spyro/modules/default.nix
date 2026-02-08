@@ -1,0 +1,7 @@
+{
+  import = [
+    ./flatpak
+    ./gaming
+    ./productivity
+  ];
+}
