@@ -21,11 +21,11 @@
       ...
     }:
     let
-      utilities = import ./utilities { inherit lib; };
+      utilities = import ./shared/utilities { inherit lib; };
       lib = nixpkgs.lib;
 
-      hostsDir = "./hosts";
-      usersDir = "./users";
+      hostsDir = ./hosts;
+      usersDir = ./users;
 
       hostEntries = builtins.readDir hostsDir;
       hostNames = utilities.getDirectoryNames hostEntries;
@@ -53,7 +53,7 @@
              description = user.name;
              extraGroups = user.groups or ["wheel"];
            }) usersByName;
-           
+
            # Initialize all the users found for home manager to work
            home-manager.users = builtins.mapAttrs (
              username:{
@@ -74,7 +74,7 @@
           in lib.nixosSystem {
             inherit pkgs system;
             modules = [
-              "./shared/modules"
+              ./shared/modules
               (directory + "/configuration.nix")
               home-manager.nixosConfigurations.home-manager
               {
