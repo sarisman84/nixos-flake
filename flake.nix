@@ -45,8 +45,8 @@
         let
           usersList = map(username : (import (usersDir + "/${username}")) users);
           usersByName = builtins.listToAttr(map((userDir: user: {name = userDir; value = user;}) users usersList));
-        in  {
-           # Initialize all the users found for the nixos config
+        in  
+          ({...}: {# Initialize all the users found for the nixos config
            users.users = builtins.mapAttrs(username: user: {
              isNormalUser = true;
              home = "/home/${username}";
@@ -61,8 +61,7 @@
                home.homeDirectory = "/home/${username}";
 
                imports = (usersDir + "/${username}/default.nix");
-             }) usersByName;
-        }
+             }) usersByName;})
       ) ;
       mkNixosConfig = 
          directory: (
