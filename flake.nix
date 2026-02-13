@@ -46,7 +46,8 @@
         map (
           username:
           let
-            userData = import (usersDir + "/${username}");
+            userDir = (usersDir + "/${username}/user.nix");
+            userData = import userDir;
           in
           {
             name = username;
@@ -54,7 +55,7 @@
               description = userData.name;
               groups = userData.groups;
               homeDirectory = "/home/${username}";
-              imports = [ (usersDir + "/${username}") ];
+              imports = [ userDir ];
             };
           }
         ) usernames;
@@ -95,14 +96,15 @@
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
                 home-manager.extraSpecialArgs.flake-inputs = inputs;
+
                 # ---- HOME MANAGER USERS ----
                 home-manager.users = builtins.listToAttrs (
                   map (user: {
                     name = user.name;
                     value = {
                       home.username = user.name;
-                      home.homeDirectory = user.homeDirectory;
-                      imports = user.imports;
+                      home.homeDirectory = user.value.homeDirectory;
+                      imports = user.value.imports;
                     };
                   }) users
                 );
