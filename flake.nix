@@ -56,7 +56,7 @@
               description = userData.name;
               groups = userData.groups;
               homeDirectory = "/home/${username}";
-              imports = [ directory ];
+              inherit directory;
             };
           }
         ) usernames;
@@ -65,10 +65,10 @@
                   map (user: {
                     name = user.name;
                     value = {
+                      imports = [(user.value.directory + "/modules")];
                       home = {
                         username = user.name;
                         homeDirectory = user.value.homeDirectory;
-                        imports = [(user.value.directory + "/${user.name}/modules")];
                         stateVersion = "25.11";
                       };
                     };

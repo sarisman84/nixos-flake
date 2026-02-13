@@ -1,5 +1,5 @@
 {
-  import = [
+  imports = [
     ./flatpak
     ./gaming
     ./productivity

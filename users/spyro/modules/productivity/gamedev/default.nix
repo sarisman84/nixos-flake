@@ -4,7 +4,7 @@
        flake-inputs.nix-flatpak.homeManagerModules.nix-flatpak
     ];
 
-    ome = {
+    home = {
         packages = with pkgs; [
            godot
            unityhub
