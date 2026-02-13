@@ -30,9 +30,6 @@
       hostEntries = builtins.readDir hostsDir;
       hostNames = utilities.getDirectoryNames hostEntries;
 
-      usersList = usernames: map(username : (import (usersDir + "/${username}")) usernames);
-      usersByName = usernames: builtins.listToAttr(map((userDir: user: {name = userDir; value = user;}) usernames usersList));
-
       mkPkgs =
         system:
         (import nixpkgs {
@@ -43,74 +40,78 @@
             cudaSupport = true;
           };
         });
-      # mkUserAcc = users: ({...}: {
-      #   users.users = builtins.mapAttrs(username: user: {
-      #        isNormalUser = true;
-      #        home = "/home/${username}";
-      #        description = user.name;
-      #        extraGroups = user.groups or ["wheel"];
-      #      }) usersByName;
-      # })  ;
-      # mkUsers = users: {
-      #      # Initialize all the users found for home manager to work
-      #      home-manager.users = builtins.mapAttrs (
-      #        username:{
-      #          home.username = username;
-      #          home.homeDirectory = "/home/${username}";
-
-      #          imports = (usersDir + "/${username}/default.nix");
-      #        }) usersByName;
-      # };
-      importUsers = usernames : 
-        let
-        in
-        {
-
-        };
-           
-
-      mkNixosConfig = 
-         directory: (
+        
+      importUsers =
+        usernames:
+        map (
+          username:
           let
-           hostData = import directory;
-           system = hostData.system;
-           pkgs = mkPkgs system;
-           users = importUsers hostData.users;
-          in lib.nixosSystem {
+            userData = import (usersDir + "/${username}");
+          in
+          {
+            name = username;
+            value = {
+              description = userData.name;
+              groups = userData.groups;
+              homeDirectory = "/home/${username}";
+              imports = [ (usersDir + "/${username}") ];
+            };
+          }
+        ) usernames;
+
+      mkNixosConfig =
+        directory:
+        (
+          let
+            hostData = import directory;
+            system = hostData.system;
+            pkgs = mkPkgs system;
+            users = importUsers hostData.users;
+          in
+          lib.nixosSystem {
             inherit pkgs system;
             modules = [
               ./shared/modules
               (directory + "/configuration.nix")
-                            ({...}:{
-                # ---- NIXOS USERS ----
-                users.users = builtins.listToAttrs(map(username: user: {
-                  name = username;
-                  value = {
-                    isNormalUser = true;
-                    home = "/home/${username}";
-                    extraGroups = user.groups or ["wheel"];
-                  }; 
-                  }) users);
-              })
+              (
+                { ... }:
+                {
+                  # ---- NIXOS USERS ----
+                  users.users = builtins.listToAttrs (
+                    map (user: {
+                      name = user.name;
+                      value = {
+                        isNormalUser = true;
+                        home = "/home/${user.name}";
+                        extraGroups = user.groups or [ "wheel" ];
+                      };
+                    }) users
+                  );
+                }
+              )
               home-manager.nixosModules.home-manager
               {
-                
+
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
                 home-manager.extraSpecialArgs.flake-inputs = inputs;
                 # ---- HOME MANAGER USERS ----
-                home-manager.users = builtins.listToAttrs(map(username: user: {
-                  name = username;
-                  value = {
-                    home.username = username;
-                    home.homeDirectory = "/home/${username}";
-                    imports = [(usersDir + "/${username}")];
-                  };
-                }));
+                home-manager.users = builtins.listToAttrs (
+                  map (
+                      user: {
+                      name = user.name;
+                      value = {
+                        home.username = user.name;
+                        home.homeDirectory = user.homeDirectory;
+                        imports = user.imports;
+                      };
+                    }
+                  ) users
+                );
               }
             ];
           }
-         );
+        );
 
       nixosSystems = map (
         hostName:
