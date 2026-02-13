@@ -97,16 +97,14 @@
                 home-manager.extraSpecialArgs.flake-inputs = inputs;
                 # ---- HOME MANAGER USERS ----
                 home-manager.users = builtins.listToAttrs (
-                  map (
-                      user: {
-                      name = user.name;
-                      value = {
-                        home.username = user.name;
-                        home.homeDirectory = user.homeDirectory;
-                        imports = user.imports;
-                      };
-                    }
-                  ) users
+                  map (user: {
+                    name = user.name;
+                    value = {
+                      home.username = user.name;
+                      home.homeDirectory = user.homeDirectory;
+                      imports = user.imports;
+                    };
+                  }) users
                 );
               }
             ];
