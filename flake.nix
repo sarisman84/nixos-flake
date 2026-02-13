@@ -46,8 +46,9 @@
         map (
           username:
           let
-            userDir = (usersDir + "/${username}/user.nix");
-            userData = import userDir;
+            directory = (usersDir + "/${username}");
+            userData = import (directory + "/user.nix");
+            #homeData = import directory;
           in
           {
             name = username;
@@ -55,11 +56,24 @@
               description = userData.name;
               groups = userData.groups;
               homeDirectory = "/home/${username}";
-              imports = [ userDir ];
+              imports = [ directory ];
             };
           }
         ) usernames;
 
+      mkHomeUsers = users : builtins.listToAttrs (
+                  map (user: {
+                    name = user.name;
+                    value = {
+                      home = {
+                        username = user.name;
+                        homeDirectory = user.value.homeDirectory;
+                        imports = [(user.value.directory + "/${user.name}/modules")];
+                        stateVersion = "25.11";
+                      };
+                    };
+                  }) users
+                );
       mkNixosConfig =
         directory:
         (
@@ -98,16 +112,7 @@
                 home-manager.extraSpecialArgs.flake-inputs = inputs;
 
                 # ---- HOME MANAGER USERS ----
-                home-manager.users = builtins.listToAttrs (
-                  map (user: {
-                    name = user.name;
-                    value = {
-                      home.username = user.name;
-                      home.homeDirectory = user.value.homeDirectory;
-                      imports = user.value.imports;
-                    };
-                  }) users
-                );
+                home-manager.users = mkHomeUsers users;
               }
             ];
           }
