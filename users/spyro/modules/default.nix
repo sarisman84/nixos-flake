@@ -3,5 +3,7 @@
     ./flatpak
     ./gaming
     ./productivity
+    ./browser
+    ./communication
   ];
 }
