@@ -1,9 +1,10 @@
 {
   imports = [
     ./flatpak
-    ./gaming
+    ./entertainment
     ./productivity
     ./browser
     ./communication
+    ./general
   ];
 }
