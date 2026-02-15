@@ -13,6 +13,8 @@
            unityhub
            figma-linux
            pandoc
+           p7zip
+           rar
         ];
     };
 }
