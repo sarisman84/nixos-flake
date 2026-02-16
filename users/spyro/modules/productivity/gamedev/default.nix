@@ -15,6 +15,7 @@
            pandoc
            p7zip
            rar
+           dotnetCorePackages.sdk_10_0-bin
         ];
     };
 }
