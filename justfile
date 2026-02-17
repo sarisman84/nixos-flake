@@ -3,7 +3,7 @@ set positional-arguments
 
 build host:
     echo '[LOG][Justfile]: Creating new build to switch to.'
-    sudo nixos-rebuild switch --flake .#{{host}} --show-trace
+    sudo nixos-rebuild switch --flake .#{{host}} --show-trace --impure
     echo '[OK][Justfile]: Build created!'
 clear:
     echo '[LOG][Justfile]: Clearing existing builds.'
