@@ -5,5 +5,6 @@
           ./ssh
           ./gpg
           ./vscode
+          ./kitty
      ];
 }

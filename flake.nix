@@ -70,6 +70,7 @@
                         username = user.name;
                         homeDirectory = user.value.homeDirectory;
                         stateVersion = "25.11";
+                        
                       };
                     };
                   }) users
