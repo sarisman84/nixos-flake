@@ -6,5 +6,6 @@
           ./gpg
           ./vscode
           ./kitty
+          ./bash
      ];
 }

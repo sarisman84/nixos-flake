@@ -90,7 +90,6 @@
               ./shared/modules
               (directory + "/configuration.nix")
               (
-                { ... }:
                 {
                   # ---- NIXOS USERS ----
                   users.users = builtins.listToAttrs (
