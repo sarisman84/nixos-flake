@@ -14,7 +14,7 @@
     # Include the results of the hardware scan.
     /etc/nixos/hardware-configuration.nix
     ./locale
-    ../../shared/modules/nvidia
+    ../../shared/modules/nvidia.nix
     ./networking
     ./bluetooth
     ./audio

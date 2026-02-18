@@ -1,6 +1,6 @@
 {
    imports = [
-     ./gaming
+     ./gaming.nix
      ./spotify.nix
    ];
 }

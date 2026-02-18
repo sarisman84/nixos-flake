@@ -14,14 +14,13 @@
   };
 
   outputs =
-    inputs@{
-      nixpkgs,
-      home-manager,
-      nix-flatpak,
-      ...
+    inputs@{ nixpkgs
+    , home-manager
+    , nix-flatpak
+    , ...
     }:
     let
-      utilities = import ./shared/utilities { inherit lib; };
+      utilities = import ./shared/utilities.nix { inherit lib; };
       lib = nixpkgs.lib;
 
       hostsDir = ./hosts;
@@ -43,38 +42,53 @@
 
       importUsers =
         usernames:
-        map (
-          username:
-          let
-            directory = (usersDir + "/${username}");
-            userData = import (directory + "/user.nix");
-            #homeData = import directory;
-          in
-          {
-            name = username;
+        map
+          (
+            username:
+            let
+              directory = (usersDir + "/${username}");
+              userData = import (directory + "/user.nix");
+              #homeData = import directory;
+            in
+            {
+              name = username;
+              value = {
+                description = userData.name;
+                groups = userData.groups;
+                homeDirectory = "/home/${username}";
+                inherit directory;
+              };
+            }
+          )
+          usernames;
+      mkUsers = users: builtins.listToAttrs
+        (
+          map
+            (user: {
+              name = user.name;
+              value = {
+                isNormalUser = true;
+                home = "/home/${user.name}";
+                extraGroups = user.groups or [ "wheel" ];
+              };
+            }))
+        users;
+      mkHomeUsers = users: builtins.listToAttrs (
+        map
+          (user: {
+            name = user.name;
             value = {
-              description = userData.name;
-              groups = userData.groups;
-              homeDirectory = "/home/${username}";
-              inherit directory;
-            };
-          }
-        ) usernames;
+              imports = [ (user.value.directory + "/modules") ];
+              home = {
+                username = user.name;
+                homeDirectory = user.value.homeDirectory;
+                stateVersion = "25.11";
 
-      mkHomeUsers = users : builtins.listToAttrs (
-                  map (user: {
-                    name = user.name;
-                    value = {
-                      imports = [(user.value.directory + "/modules")];
-                      home = {
-                        username = user.name;
-                        homeDirectory = user.value.homeDirectory;
-                        stateVersion = "25.11";
-                        
-                      };
-                    };
-                  }) users
-                );
+              };
+            };
+          })
+          users
+      );
       mkNixosConfig =
         directory:
         (
@@ -87,23 +101,14 @@
           lib.nixosSystem {
             inherit pkgs system;
             modules = [
-              ./shared/modules
+              ./shared/modules/general.nix
               (directory + "/configuration.nix")
-              (
-                {
-                  # ---- NIXOS USERS ----
-                  users.users = builtins.listToAttrs (
-                    map (user: {
-                      name = user.name;
-                      value = {
-                        isNormalUser = true;
-                        home = "/home/${user.name}";
-                        extraGroups = user.groups or [ "wheel" ];
-                      };
-                    }) users
-                  );
-                }
-              )
+
+              {
+                # ---- NIXOS USERS ----
+                users.users = mkUsers users;
+              }
+
               home-manager.nixosModules.home-manager
               {
 
@@ -119,16 +124,18 @@
           }
         );
 
-      nixosSystems = map (
-        hostName:
-        let
-          hostPath = hostsDir + "/${hostName}";
-        in
-        {
-          name = hostName;
-          value = mkNixosConfig hostPath;
-        }
-      ) hostNames;
+      nixosSystems = map
+        (
+          hostName:
+          let
+            hostPath = hostsDir + "/${hostName}";
+          in
+          {
+            name = hostName;
+            value = mkNixosConfig hostPath;
+          }
+        )
+        hostNames;
 
     in
     {
