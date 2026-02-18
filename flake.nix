@@ -110,6 +110,7 @@
                 home-manager.useGlobalPkgs = true;
                 home-manager.useUserPackages = true;
                 home-manager.extraSpecialArgs.flake-inputs = inputs;
+                home-manager.backupFileExtension = "backup";
 
                 # ---- HOME MANAGER USERS ----
                 home-manager.users = mkHomeUsers users;
