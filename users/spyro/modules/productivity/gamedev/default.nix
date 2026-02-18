@@ -11,8 +11,9 @@
         packages = with pkgs; [
            godot
            (unityhub.override {
-             extraPkgs = [
+             extraPkgs = pkgs: [
                 vscode
+                dotnetCorePackages.sdk_10_0-bin
              ];
            })
            figma-linux

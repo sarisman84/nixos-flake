@@ -19,7 +19,7 @@
                     ms-vscode.cpptools
                     ms-vscode.cmake-tools
                     #VisualStudioToolsForUnity.vstuc
-                    #visualstudiotoolsforunity.vstuc
+                    visualstudiotoolsforunity.vstuc
                     #PKief.material-icon-theme
 
                     #Themes
