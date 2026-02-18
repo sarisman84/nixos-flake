@@ -37,6 +37,7 @@
                     prisma.prisma
                 
                 ];
+                userSettings = builtins.fromJSON (builtins.readFile ./config.json);
             };
         };
         direnv = {

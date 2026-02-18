@@ -1,0 +1,37 @@
+{
+  "editor.fontFamily": "'FiraCode', monospace",
+  "nix.formatterPath": [
+    "nixpkgs-fmt",
+    "nixfmt",
+    "treefmt",
+    "--stdin",
+    "{file}",
+    "nix",
+    "fmt",
+    "--",
+    "-"
+  ],
+  "nix.enableLanguageServer": true,
+  "nix.serverPath": "nixd",
+  "nix.serverSettings": {
+    "nixd": {
+      "formatting": {
+        "command": ["nixpkgs-fmt"]
+      },
+      "options": {
+        "nixos": {
+          "expr": "(builtins.getFlake \"/absolute/path/to/flake\").nixosConfigurations.<name>.options"
+        },
+        "home-manager": {
+          "expr": "(builtins.getFlake \"/absolute/path/to/flake\").homeConfigurations.<name>.options"
+        },
+        "nix-darwin": {
+          "expr": "(builtins.getFlake \"${workspaceFolder}/path/to/flake\").darwinConfigurations.<name>.options"
+        }
+      }
+    }
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  }
+}

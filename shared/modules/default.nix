@@ -11,6 +11,11 @@
   # Flatpak
   services.flatpak.enable = true;
 
+  # Fonts
+  fonts.packages = with pkgs; [
+     nerd-fonts.fira-code
+  ];
+
   # List packages installed in system profile. To search, run:
   # $ nix search wget
   environment.systemPackages = with pkgs; [
