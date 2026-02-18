@@ -13,14 +13,12 @@
            (unityhub.override {
              extraPkgs = pkgs: [
                 vscode
-                dotnetCorePackages.sdk_10_0-bin
              ];
            })
            figma-linux
            pandoc
            p7zip
            rar
-           dotnetCorePackages.sdk_10_0-bin
         ];
     };
 }
