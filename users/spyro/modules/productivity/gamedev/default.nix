@@ -10,7 +10,11 @@
     home = {
         packages = with pkgs; [
            godot
-           unityhub
+           (unityhub.override {
+             extraPkgs = [
+                vscode
+             ];
+           })
            figma-linux
            pandoc
            p7zip
