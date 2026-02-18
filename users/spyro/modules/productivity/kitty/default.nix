@@ -8,8 +8,8 @@
       enable = true;
       themeFile = "Catppuccin-Mocha";
       font =  {
-        package = with pkgs; monaspace;
-        name = "Monaspace Krypton";
+        package = with pkgs; nerd-fonts.fira-code;
+        name = "FiraCode";
         size = 10;
       };
     };
