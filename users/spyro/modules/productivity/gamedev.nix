@@ -13,6 +13,7 @@
            (unityhub.override {
              extraPkgs = pkgs: [
                 vscode
+                dotnetCorePackages.sdk_10_0
              ];
            })
            figma-linux

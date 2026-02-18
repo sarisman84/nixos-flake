@@ -1,11 +1,4 @@
 { pkgs, flake-inputs, ... }:
-let
-  vs = with pkgs; vscode.overrideAttrs (old: {
-    buildInputs = (old.buildInputs or [ ]) ++ [
-        dotnetCorePackages.sdk_10_0-bin
-    ];
-  });
-in
 {
   imports = [
     flake-inputs.nix-flatpak.homeManagerModules.nix-flatpak
@@ -14,7 +7,6 @@ in
   programs = {
     vscode = {
       enable = true;
-      package = vs;
       profiles.default = {
         extensions = with pkgs.vscode-extensions; [
           #General
