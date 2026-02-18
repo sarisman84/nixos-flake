@@ -1,10 +1,10 @@
 {
   imports = [
-    ./flatpak
+    ./flatpak.nix
     ./entertainment
     ./productivity
-    ./browser
-    ./communication
-    ./general
+    ./browser.nix
+    ./communication.nix
+    ./general.nix
   ];
 }

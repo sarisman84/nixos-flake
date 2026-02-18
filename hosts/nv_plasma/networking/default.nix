@@ -1,5 +1,8 @@
 { config, pkgs, lib, ... }:  
 {
+    
+    services.resolved.enable = true;
+
     networking.networkmanager.enable = true;
 
     networking.hostName = "spyro-nv_plasma"; # Define your hostname.

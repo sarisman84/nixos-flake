@@ -1,12 +1,6 @@
-{pkgs, ...}:
 {
    imports = [
      ./gaming
+     ./spotify.nix
    ];
-
-   home = {
-    packages = with pkgs; [
-       spotify
-    ];
-   };
 }

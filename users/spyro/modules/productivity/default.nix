@@ -1,11 +1,11 @@
 {
      imports = [
-          ./gamedev
-          ./git
-          ./ssh
-          ./gpg
+          ./gamedev.nix
+          ./git.nix
+          ./ssh.nix
+          ./gpg.nix
           ./vscode
-          ./kitty
+          ./kitty.nix
           ./bash
      ];
 }
