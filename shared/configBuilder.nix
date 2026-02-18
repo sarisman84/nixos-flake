@@ -1,7 +1,5 @@
 {lib, nixpkgs, home-manager, inputs, ...}:
 let
-   usersDir = ./users;
-
    mkPkgs =
        system:
        (import nixpkgs {
@@ -46,8 +44,9 @@ let
 
   
     importUsers =
-        usernames:
-        map
+        usersDir: 
+          usernames:
+          map
           (
             username:
             let
@@ -65,22 +64,23 @@ let
               };
             }
           )
-          usernames;
+         usernames;
 in
 {
   mkNixosConfig =
     directory:
+    userDirectory:
     (
       let
         hostData = import directory;
         system = hostData.system;
         pkgs = mkPkgs system;
-        users = importUsers hostData.users;
+        users = importUsers userDirectory hostData.users ;
       in
       lib.nixosSystem {
         inherit pkgs system;
         modules = [
-          ./shared/modules/general.nix
+          ./modules/general.nix
           (directory + "/configuration.nix")
 
           {

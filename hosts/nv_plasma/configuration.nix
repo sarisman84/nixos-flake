@@ -13,11 +13,11 @@
   imports = [
     # Include the results of the hardware scan.
     /etc/nixos/hardware-configuration.nix
-    ./locale
+    ./locale.nix
     ../../shared/modules/nvidia.nix
-    ./networking
-    ./bluetooth
-    ./audio
+    ./networking.nix
+    ./bluetooth.nix
+    ./audio.nix
   ];
 
   nix.settings.experimental-features = [
