@@ -15,7 +15,7 @@
                 email = "spyridonpassas0325@gmail.com";
                 name = "Spyridon Passas";
             };
-        };
+        };  
 
         signing = {
             key = "15D70382F4826CB8";

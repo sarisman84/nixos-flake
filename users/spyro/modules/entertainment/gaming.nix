@@ -2,6 +2,7 @@
 {
     programs = {
         lutris.enable = true;
+        
     };
 
     home = {
@@ -9,6 +10,8 @@
             #moonlight-qt
             (callPackage ./moonlight-qt-patched.nix {inherit pkgs;})
             steam
+            wineWow64Packages.stable
+            winetricks
         ];
     };
 }

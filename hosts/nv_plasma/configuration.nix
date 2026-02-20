@@ -2,13 +2,7 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
-{
-  ev_utils,
-  config,
-  pkgs,
-  lib,
-  ...
-}:
+{ ...}:
 {
   imports = [
     # Include the results of the hardware scan.
@@ -18,6 +12,7 @@
     ./networking.nix
     ./bluetooth.nix
     ./audio.nix
+    ./fancontrol.nix
   ];
 
   nix.settings.experimental-features = [
@@ -35,15 +30,13 @@
   #programs.xwayland.enable = true;
 
   # Enable the KDE Plasma Desktop Environment.
+  services.displayManager.sddm.wayland.enable = true;
   services.displayManager.sddm.enable = true;
   services.desktopManager.plasma6.enable = true;
 
   # Enable CUPS to print documents.
   services.printing.enable = true;
 
-
-
-  
 
   environment.variables.EDITOR = "vim";
   programs.mtr.enable = true;
