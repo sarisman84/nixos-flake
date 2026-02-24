@@ -1,4 +1,6 @@
 {
   system = "x86_64-linux";
-  users = [ "spyro"];
+  desktopEnv = "kde-plasma";
+  users = [ "spyro" ];
+  modules = [ "nvidia" ];
 }
