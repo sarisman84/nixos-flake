@@ -13,5 +13,5 @@ clear:
 
 update host:
     echo '[LOG][Justfile]: Creating new build with updated packages to switch to.'
-    sudo nixos-rebuild switch --flake .#{{host}} --show-trace --upgrade
+    sudo nixos-rebuild switch --flake .#{{host}} --show-trace --upgrade --impure
     echo '[OK][Justfile]: Packages updated | Build created!'

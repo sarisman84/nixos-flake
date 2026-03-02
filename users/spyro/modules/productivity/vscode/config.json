@@ -1,6 +1,8 @@
 {
   "files.associations": {
-    "*.css": "tailwindcss"
+    "*.css": "tailwindcss",
+    "*.uxml": "xml",
+    "*.uss": "css"
   },
   "editor.quickSuggestions": {
     "strings": "on"
@@ -51,5 +53,5 @@
   },
   "[markdown]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  } 
+  }
 }

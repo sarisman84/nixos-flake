@@ -15,7 +15,9 @@
       wineWow64Packages.stable
       winetricks
       rusty-path-of-building
-      (callPackage ./moonlight-qt-patched.nix { inherit pkgs; })
+      #(callPackage ./modrinth-patched.nix { inherit pkgs; })
+      prismlauncher
+      jre
     ];
   };
 }

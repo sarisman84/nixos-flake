@@ -1,7 +1,4 @@
 { pkgs }: with pkgs; modrinth-app.overrideAttrs (oldAttrs: {
-  nativeBuildInputs =
-    (oldAttrs.nativeBuildInputs or [ ]) ++ [ pkgs.makeWrapper ];
-
   buildCommand =
     ''
       					gappsWrapperArgs+=(
