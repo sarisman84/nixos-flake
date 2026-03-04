@@ -20,6 +20,25 @@
     "flakes"
   ];
 
+  # Auto Update
+  system.autoUpgrade = {
+    enable = true;
+    flake = "/home/flake.nix";
+    flags = [
+      "--print-build-logs"
+      "--commit-lock-file" # If you want to automatically commit the updated flake.lock
+    ];
+    dates = "02:00";
+    randomizedDelaySec = "45min";
+  };
+  # Garbage Collection
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 300";
+  };
+  nix.settings.auto-optimise-store = true;
+
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
