@@ -70,14 +70,14 @@ let
 
     # Compose shared imports automatically
     moduleEntries = builtins.readDir ./shared/modules;
-    mkSharedImports = modules : builtins.listToAttrs(
+    mkSharedImports = 
+     modules : 
      map(module:{
         name = module;
         value = {
           inherit module;
         };
-      })
-  );
+      });
 in
 {
   mkNixosConfig =
