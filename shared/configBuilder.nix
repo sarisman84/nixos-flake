@@ -1,5 +1,6 @@
 {lib, nixpkgs, home-manager, inputs, ...}:
 let
+   utilities = import ./shared/utilities.nix { inherit lib; };
    mkPkgs =
        system:
        (import nixpkgs {
@@ -69,15 +70,20 @@ let
          usernames;
 
     # Compose shared imports automatically
-    moduleEntries = builtins.readDir ./shared/modules;
-    mkSharedImports = 
-     modules : 
-     map(module:{
+    mkSharedImports = directory :
+    let
+      moduleEntries = builtins.readDir directory;
+      modules = utilities.getFileNames moduleEntries;
+    in builtins.listToAttrs(
+     map(
+      module:{
         name = module;
         value = {
           inherit module;
         };
-      });
+      })
+      modules
+  );
 in
 {
   mkNixosConfig =
@@ -89,7 +95,7 @@ in
         system = hostData.system;
         pkgs = mkPkgs system;
         users = importUsers userDirectory hostData.users ;
-        sharedImports = mkSharedImports moduleEntries;
+        sharedImports = mkSharedImports ./shared/modules;
       in
       lib.nixosSystem {
         inherit pkgs system;
