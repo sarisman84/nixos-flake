@@ -77,7 +77,7 @@ let
     in builtins.listToAttrs(
      map(
       module:{
-        name = module;
+        name = builtins.replaceStrings [".nix"] [""] module;
         value = {
           inherit module;
         };
