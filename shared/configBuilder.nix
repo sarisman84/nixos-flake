@@ -1,6 +1,6 @@
 {lib, nixpkgs, home-manager, inputs, ...}:
 let
-   utilities = import ./shared/utilities.nix { inherit lib; };
+   utilities = import ./utilities.nix { inherit lib; };
    mkPkgs =
        system:
        (import nixpkgs {
