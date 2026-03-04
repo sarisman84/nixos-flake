@@ -70,6 +70,7 @@ in
   mkNixosConfig =
     directory:
     userDirectory:
+    sharedImports:
     (
       let
         hostData = import directory;
@@ -79,6 +80,9 @@ in
       in
       lib.nixosSystem {
         inherit pkgs system;
+        specialArgs = {
+          inherit sharedImports;
+        };
         modules = [
           ./modules/general.nix
           (directory + "/configuration.nix")

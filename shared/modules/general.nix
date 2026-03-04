@@ -1,4 +1,5 @@
 { pkgs
+, inputs
 , ...
 }:
 {
@@ -37,7 +38,7 @@
   # Auto Update
   system.autoUpgrade = {
     enable = true;
-    flake = "../../flake.nix";
+    flake = "/home/flake.nix";
     flags = [
       "--print-build-logs"
       "--commit-lock-file" # If you want to automatically commit the updated flake.lock
