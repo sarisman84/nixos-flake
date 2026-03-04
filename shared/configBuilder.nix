@@ -10,7 +10,8 @@ let
            cudaSupport = true;
          };
    });
- 
+   
+   # Define Users and their permissions
    mkUsers = users: builtins.listToAttrs
    (
      map
@@ -25,6 +26,7 @@ let
        users
    );
 
+  # Define Home Manager Users
   mkHomeUsers = users: builtins.listToAttrs (
     map
       (user: {
@@ -42,7 +44,7 @@ let
       users
   );
 
-  
+    # Define System users for Nix Config
     importUsers =
         usersDir: 
           usernames:
@@ -65,18 +67,29 @@ let
             }
           )
          usernames;
+
+    # Compose shared imports automatically
+    moduleEntries = builtins.readDir ./shared/modules;
+    mkSharedImports = modules : builtins.listToAttrs(
+     map(module:{
+        name = module;
+        value = {
+          inherit module;
+        };
+      })
+  );
 in
 {
   mkNixosConfig =
     directory:
     userDirectory:
-    sharedImports:
     (
       let
         hostData = import directory;
         system = hostData.system;
         pkgs = mkPkgs system;
         users = importUsers userDirectory hostData.users ;
+        sharedImports = mkSharedImports moduleEntries;
       in
       lib.nixosSystem {
         inherit pkgs system;

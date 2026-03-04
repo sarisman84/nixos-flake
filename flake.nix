@@ -35,10 +35,6 @@
       hostEntries = builtins.readDir hostsDir;
       hostNames = utilities.getDirectoryNames hostEntries;
 
-      sharedImports = {
-        nvidia = import ./shared/modules/nvidia.nix;
-      };
-
       nixosSystems = map
         (
           hostName:
@@ -47,7 +43,7 @@
           in
           {
             name = hostName;
-            value = configBuilder.mkNixosConfig hostPath usersDir sharedImports;
+            value = configBuilder.mkNixosConfig hostPath usersDir;
           }
         )
         hostNames;
