@@ -73,14 +73,12 @@ let
     mkSharedImports = directory :
     let
       moduleEntries = builtins.readDir directory;
-      modules = utilities.getFileNames moduleEntries;
+      modules = utilities.getNixFileNames moduleEntries;
     in builtins.listToAttrs(
      map(
       module:{
-        name = builtins.replaceStrings [".nix"] [""] module;
-        value = {
-          inherit module;
-        };
+        name = lib.removeSuffix ".nix" module;
+        value = import (directory + "/" + module);
       })
       modules
   );
