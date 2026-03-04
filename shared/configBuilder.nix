@@ -78,7 +78,7 @@ let
      map(
       module:{
         name = lib.removeSuffix ".nix" module;
-        value = import (directory + "/" + module);
+        value = import ("${directory}/${module}");
       })
       modules
   );
