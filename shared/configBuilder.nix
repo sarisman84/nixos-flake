@@ -95,7 +95,7 @@ in
         system = hostData.system;
         pkgs = mkPkgs system;
         users = importUsers userDirectory hostData.users ;
-        sharedImports = mkSharedImports ./shared/modules;
+        sharedImports = mkSharedImports ./modules;
       in
       lib.nixosSystem {
         inherit pkgs system;
