@@ -12,7 +12,7 @@ let
   );
 in
 {
-  ext_vscode = (pkgs.vscode.overrideAttrs (prevAttrs: {
+  vscode = (pkgs.vscode.overrideAttrs (prevAttrs: {
           nativeBuildInputs = prevAttrs.nativeBuildInputs ++ [ pkgs.makeWrapper ];
           postFixup =
             prevAttrs.postFixup

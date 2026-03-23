@@ -1,6 +1,6 @@
 { pkgs, flake-inputs , ... }:
 let 
-    vs = import ./vscode/packaged_vscode.nix {inherit pkgs;};
+    ext = import ./vscode/packaged_vscode.nix {inherit pkgs;};
 in
 {
     imports = [
@@ -15,7 +15,7 @@ in
            godot
            (unityhub.override {
              extraPkgs = pkgs: [
-                vs.code
+                ext.vscode
              ];
            })
            figma-linux

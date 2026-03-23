@@ -1,6 +1,6 @@
 { pkgs, flake-inputs, ... }:
 let
-  code = import ./packaged_vscode.nix {inherit pkgs;};
+  ext = import ./packaged_vscode.nix {inherit pkgs;};
 in
 {
 
@@ -12,7 +12,7 @@ in
   programs = {
     vscode = {
       enable = true;
-      package = code;
+      package = ext.vscode;
        
       profiles.default = {
         extensions = with pkgs.vscode-extensions;
