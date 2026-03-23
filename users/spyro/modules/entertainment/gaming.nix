@@ -14,10 +14,15 @@
       steam
       wineWow64Packages.stable
       winetricks
-      rusty-path-of-building
+      #rusty-path-of-building
       #(callPackage ./modrinth-patched.nix { inherit pkgs; })
       prismlauncher
       jre
+      crossmacro
     ];
   };
+
+  services.flatpak.packages = [
+    "community.pathofbuilding.PathOfBuilding"
+  ];
 }
