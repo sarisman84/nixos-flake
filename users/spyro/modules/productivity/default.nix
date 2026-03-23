@@ -7,5 +7,6 @@
           ./vscode
           ./kitty.nix
           ./bash
+          ./ollama.nix
      ];
 }
