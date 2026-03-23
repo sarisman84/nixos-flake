@@ -1,4 +1,4 @@
-{pkgs, ...}:
+{ pkgs, ... }:
 let
   dotnet = with pkgs.dotnetCorePackages;
     combinePackages [
@@ -8,18 +8,21 @@ let
     ];
   deps = (
     ps:
-      [ dotnet ]
+    with ps;
+    [
+      ollama
+    ] ++ [ dotnet ]
   );
 in
 {
   vscode = (pkgs.vscode.overrideAttrs (prevAttrs: {
-          nativeBuildInputs = prevAttrs.nativeBuildInputs ++ [ pkgs.makeWrapper ];
-          postFixup =
-            prevAttrs.postFixup
-            + ''
-              wrapProgram $out/bin/code \
-                --set DOTNET_ROOT "${dotnet}" \
-                --prefix PATH : "~/.dotnet/tools"
-            '';
-        })).fhsWithPackages (ps: deps ps);
+    nativeBuildInputs = prevAttrs.nativeBuildInputs ++ [ pkgs.makeWrapper ];
+    postFixup =
+      prevAttrs.postFixup
+      + ''
+        wrapProgram $out/bin/code \
+          --set DOTNET_ROOT "${dotnet}" \
+          --prefix PATH : "~/.dotnet/tools"
+      '';
+  })).fhsWithPackages (ps: deps ps);
 }
