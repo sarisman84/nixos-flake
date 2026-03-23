@@ -1,8 +1,10 @@
 { pkgs, flake-inputs , ... }:
+let 
+    vs = import ./vscode/packaged_vscode.nix {inherit pkgs;};
+in
 {
     imports = [
        flake-inputs.nix-flatpak.homeManagerModules.nix-flatpak
-       ./vscode
     ];
     programs = {
         obsidian.enable = true;
@@ -13,7 +15,7 @@
            godot
            (unityhub.override {
              extraPkgs = pkgs: [
-                vscode-fhs
+                vs.code
              ];
            })
            figma-linux
