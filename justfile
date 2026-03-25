@@ -5,6 +5,11 @@ build host:
     echo '[LOG][Justfile]: Creating new build to switch to.'
     sudo nixos-rebuild switch --flake .#{{host}} --show-trace --impure
     echo '[OK][Justfile]: Build created!'
+repair host:
+    echo '[LOG][Justfile]: Creating new build to switch to.'
+    sudo nixos-rebuild switch --flake .#{{host}} --show-trace --impure --repair
+    echo '[OK][Justfile]: Build created!'
+    
 clear:
     echo '[LOG][Justfile]: Clearing existing builds.'
     sudo nix-collect-garbage -d

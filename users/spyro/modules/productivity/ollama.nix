@@ -1,12 +1,12 @@
 { pkgs, ... }:
 {
-  services.ollama = { 
+  services.ollama = {
     enable = true;
   };
 
   home = {
     packages = with pkgs; [
-       claude-code
+      claude-code
     ];
   };
 }
