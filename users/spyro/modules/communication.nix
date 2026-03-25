@@ -1,12 +1,16 @@
-{pkgs, ...}:
+{ pkgs, flake-inputs, ... }:
 {
-  programs = {
-    discord.enable = true;
-  };
+  imports = [
+    flake-inputs.nix-flatpak.homeManagerModules.nix-flatpak
+  ];
 
   home = {
     packages = with pkgs; [
-       thunderbird
+      thunderbird
     ];
   };
+
+  services.flatpak.packages = [
+    "com.discordapp.Discord"
+  ];
 }
