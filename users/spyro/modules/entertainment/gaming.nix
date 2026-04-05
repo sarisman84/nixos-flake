@@ -19,6 +19,7 @@
       prismlauncher
       jre
       crossmacro
+      pcsx2
     ];
   };
 
