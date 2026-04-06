@@ -8,6 +8,6 @@
           ./kitty.nix
           ./bash
           ./ollama.nix
-          ./jetbrains.nix
+          ./jetbrains
      ];
 }
