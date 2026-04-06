@@ -35,7 +35,7 @@ in
 {
   rider = patched_rider;
 
-  home-manager.users.huantian.home.file = {
+  home-manager.users.spyro.home.file = {
   ".local/share/applications/jetbrains-rider.desktop".source =
       let
         desktopFile = pkgs.makeDesktopItem {
