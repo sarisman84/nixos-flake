@@ -15,7 +15,9 @@ in
            godot
            (unityhub.override {
              extraPkgs = pkgs: [
-                ext.vscode
+                #ext.vscode
+                jetbrains-toolbox
+                jetbrains.rider
              ];
            })
            figma-linux
