@@ -14,7 +14,7 @@ in
     ];
   };
 
-  home-manager.users.spyro.home-files = {
+  home.file = {
   ".local/share/applications/jetbrains-rider.desktop".source =
       let
         desktopFile = pkgs.makeDesktopItem {
