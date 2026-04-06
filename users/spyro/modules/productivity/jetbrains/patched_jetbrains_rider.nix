@@ -11,9 +11,8 @@ let
   extra-lib = with pkgs; [
 
   ];
-in
-{
-  rider = pkgs.jetbrains.rider.overrideAttrs (attrs: {
+
+  patched_rider = pkgs.jetbrains.rider.overrideAttrs (attrs: {
     postInstall = ''
       # Wrap rider with extra tools and libraries
       mv $out/bin/rider $out/bin/.rider-toolless
@@ -32,4 +31,23 @@ in
       shopt -u extglob
     '' + attrs.postInstall or "";
   });
+in
+{
+  rider = patched_rider;
+
+  home-manager.users.huantian.home.file = {
+  ".local/share/applications/jetbrains-rider.desktop".source =
+      let
+        desktopFile = pkgs.makeDesktopItem {
+          name = "jetbrains-rider";
+          desktopName = "Rider";
+          exec = "\"${patched_rider}/bin/rider\"";
+          icon = "rider";
+          type = "Application";
+          # Don't show desktop icon in search or run launcher
+          extraConfig.NoDisplay = "true";
+        };
+      in
+      "${desktopFile}/share/applications/jetbrains-rider.desktop";
+  };
 }
