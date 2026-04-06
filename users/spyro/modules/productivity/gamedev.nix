@@ -1,6 +1,7 @@
-{ pkgs, flake-inputs , ... }:
+{ pkgs,lib, flake-inputs , ... }:
 let 
-    ext = import ./vscode/packaged_vscode.nix {inherit pkgs;};
+    vs_ext = import ./vscode/packaged_vscode.nix {inherit pkgs;};
+    jr_ext = import ./jetbrains/patched_jetbrains_rider.nix {inherit pkgs; inherit lib;};
 in
 {
     imports = [
@@ -15,9 +16,9 @@ in
            godot
            (unityhub.override {
              extraPkgs = pkgs: [
-                #ext.vscode
+                #vs_ext.vscode
                 jetbrains-toolbox
-                jetbrains.rider
+                jr_ext.rider
              ];
            })
            figma-linux
