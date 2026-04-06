@@ -1,8 +1,8 @@
 { pkgs, lib, ... }:
 let
   extra-path = with pkgs; [
-    dotnet-aspnetcore_10
-    dotnet-sdk_10
+    dotnetCorePackages.sdk_10_0
+    dotnetCorePackages.aspnetcore_10_0
     dotnetPackages.Nuget
     mono
     msbuild
