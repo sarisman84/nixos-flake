@@ -34,6 +34,4 @@ let
 in
 {
   rider = patched_rider;
-
-  
 }

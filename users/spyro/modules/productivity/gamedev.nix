@@ -17,8 +17,8 @@ in
            (unityhub.override {
              extraPkgs = pkgs: [
                 #vs_ext.vscode
-                jetbrains-toolbox
-                jr_ext.rider
+                #jetbrains-toolbox
+                #jr_ext.rider
              ];
            })
            figma-linux
