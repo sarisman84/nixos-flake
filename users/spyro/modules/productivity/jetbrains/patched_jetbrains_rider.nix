@@ -6,6 +6,9 @@ let
     dotnetPackages.Nuget
     mono
     msbuild
+
+    ollama
+    ollama-cuda
   ];
 
   extra-lib = with pkgs; [

@@ -2,7 +2,7 @@
 # your system.  Help is available in the configuration.nix(5) man page
 # and in the NixOS manual (accessible by running ‘nixos-help’).
 
-{ sharedImports, ...}:
+{ sharedImports, ... }:
 {
   imports = [
     # Include the results of the hardware scan.
@@ -42,6 +42,8 @@
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
+
+  boot.kernelModules = [ "ntsync" ];
 
   # Enable the X11 windowing system.
   # You can disable this if you're only using the Wayland session.
