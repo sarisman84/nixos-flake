@@ -20,6 +20,7 @@
       jre
       crossmacro
       pcsx2
+      osu-lazer-bin
     ];
   };
 
