@@ -62,9 +62,13 @@
   environment.variables.EDITOR = "vim";
   programs.mtr.enable = true;
 
-  security.run0 = {
-     enableSudoAlias = true;
-     wheelNeedsPassword = true;
+  security = {
+    sudo.enable = false;
+    sudo-rs.enable = false;
+    run0 = {
+      enableSudoAlias = true;
+      wheelNeedsPassword = true;
+    };
   };
 
   # Some programs need SUID wrappers, can be configured further or are
