@@ -9,5 +9,6 @@
           ./bash
           ./ollama.nix
           ./jetbrains
+          ./teams.nix
      ];
 }
