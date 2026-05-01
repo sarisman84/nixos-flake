@@ -2,7 +2,7 @@
      imports = [
           ./gamedev.nix
           ./git.nix
-          ./ssh.nix
+          ./ssh
           ./gpg.nix
           ./vscode
           ./kitty.nix
