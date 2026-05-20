@@ -3,11 +3,11 @@ set positional-arguments
 
 build host:
     echo '[LOG][Justfile]: Creating new build to switch to.'
-    sudo nixos-rebuild switch --flake .#{{host}} --show-trace --impure
+    sudo nixos-rebuild switch --flake .#{{host}} --show-trace
     echo '[OK][Justfile]: Build created!'
 repair host:
     echo '[LOG][Justfile]: Creating new build to switch to.'
-    sudo nixos-rebuild switch --flake .#{{host}} --show-trace --impure --repair
+    sudo nixos-rebuild switch --flake .#{{host}} --show-trace --repair
     echo '[OK][Justfile]: Build created!'
     
 clear:
@@ -18,5 +18,5 @@ clear:
 
 update host:
     echo '[LOG][Justfile]: Creating new build with updated packages to switch to.'
-    sudo nixos-rebuild switch --flake .#{{host}} --show-trace --upgrade --impure
+    sudo nixos-rebuild switch --flake .#{{host}} --show-trace --upgrade
     echo '[OK][Justfile]: Packages updated | Build created!'
