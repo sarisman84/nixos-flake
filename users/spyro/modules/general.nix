@@ -6,6 +6,7 @@
       obs-studio
       vhs
       vlc
+      filezilla
     ];
   };
 }
