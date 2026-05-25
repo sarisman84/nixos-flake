@@ -1,4 +1,7 @@
 { pkgs, flake-inputs, ... }:
+let
+  patched-moonlight = (pkgs.callPackage ./moonlight-qt-patched.nix { inherit pkgs; });
+in
 {
   imports = [
     flake-inputs.nix-flatpak.homeManagerModules.nix-flatpak
@@ -10,7 +13,7 @@
   home = {
     packages = with pkgs; [
       #moonlight-qt
-      (callPackage ./moonlight-qt-patched.nix { inherit pkgs; })
+      patched-moonlight
       steam
       wineWow64Packages.stable
       winetricks
@@ -20,11 +23,11 @@
       jre
       crossmacro
       pcsx2
-      osu-lazer-bin
     ];
   };
 
   services.flatpak.packages = [
     "community.pathofbuilding.PathOfBuilding"
+    "sh.ppy.osu"
   ];
 }
