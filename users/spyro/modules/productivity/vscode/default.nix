@@ -47,8 +47,15 @@ in
           ];
         userSettings = builtins.fromJSON (builtins.readFile ./config.json);
       };
-
     };
+
+    home = {
+      packages = with pkgs; [
+         nodejs
+         nodePackages.pnpm
+      ];
+    };
+
     direnv = {
       enable = true;
       enableBashIntegration = true;

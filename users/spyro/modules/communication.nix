@@ -5,6 +5,7 @@
   imports = [
     flake-inputs.nix-flatpak.homeManagerModules.nix-flatpak
   ];
+
   # programs = {
   #   discord.enable = true;
   # };
