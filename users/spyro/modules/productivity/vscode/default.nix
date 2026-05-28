@@ -1,6 +1,6 @@
 { pkgs, flake-inputs, ... }:
 let
-  ext = import ./packaged_vscode.nix {inherit pkgs;};
+  ext = import ./packaged_vscode.nix { inherit pkgs; };
 in
 {
 
@@ -9,11 +9,18 @@ in
     flake-inputs.nix-flatpak.homeManagerModules.nix-flatpak
   ];
 
+  home = {
+    packages = with pkgs; [
+      nodejs
+      nodePackages.pnpm
+    ];
+  };
+
   programs = {
     vscode = {
       enable = true;
       package = ext.vscode;
-       
+
       profiles.default = {
         extensions = with pkgs.vscode-extensions;
           [
@@ -49,12 +56,6 @@ in
       };
     };
 
-    home = {
-      packages = with pkgs; [
-         nodejs
-         nodePackages.pnpm
-      ];
-    };
 
     direnv = {
       enable = true;
