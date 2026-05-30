@@ -16,7 +16,7 @@
   # };
 
   services.flatpak.packages = [
-    "dev.vencord.Vesktop"
+    "com.discordapp.Discord"
     "me.proton.Mail"
   ];
 }
