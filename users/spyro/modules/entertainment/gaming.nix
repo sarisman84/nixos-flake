@@ -23,7 +23,7 @@ in
       jre
       crossmacro
       pcsx2
-      flake-inputs.nix-gaming.${pkgs.stdenv.hostPlatform.system}.star-citizen
+      flake-inputs.nix-gaming.${"x86_64-linux"}.star-citizen
     ];
   };
 
