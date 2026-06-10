@@ -20,10 +20,10 @@ in
       #rusty-path-of-building
       #(callPackage ./modrinth-patched.nix { inherit pkgs; })
       prismlauncher
-      jre
+      jrecjear
       crossmacro
       pcsx2
-      flake-inputs.nix-gaming.${"x86_64-linux"}.star-citizen
+      flake-inputs.nix-gaming.x86_64-linux.star-citizen
     ];
   };
 
