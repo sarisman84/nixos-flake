@@ -17,9 +17,14 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    nix-citizen  = {
+      url = "github:LovingMelody/nix-citizen";
+      inputs.nix-gaming.follows = "nix-gaming";
+    };
+
     nix-gaming = {
       url = "github:fufexan/nix-gaming";
-    };
+    }; 
   };
 
   outputs =

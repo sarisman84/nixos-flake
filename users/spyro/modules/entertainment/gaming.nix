@@ -1,11 +1,17 @@
 { pkgs, flake-inputs, ... }:
 let
   patched-moonlight = (pkgs.callPackage ./moonlight-qt-patched.nix { inherit pkgs; });
+  nix-citizen = flake_inputs.nix-citizen.packages.${system};
+  nix-gaming = flake-inputs.nix-gaming.packages.${pkgs.stdenv.hostPlatform.system};
 in
 {
+  
   imports = [
     flake-inputs.nix-flatpak.homeManagerModules.nix-flatpak
   ];
+
+  
+  
   programs = {
     lutris.enable = true;
   };
@@ -23,7 +29,7 @@ in
       jre
       crossmacro
       pcsx2
-      flake-inputs.nix-gaming.packages.${pkgs.stdenv.hostPlatform.system}.star-citizen
+      nix-gaming.star-citizen
     ];
   };
 
