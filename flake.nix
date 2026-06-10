@@ -16,6 +16,11 @@
       url = "github:ezKEa/aagl-gtk-on-nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
+    nix-gaming = {
+      url = "github:fufexan/nix-gaming";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -26,7 +31,7 @@
     }:
     let
       utilities = import ./shared/utilities.nix { inherit lib; };
-      configBuilder = import ./shared/configBuilder.nix {inherit lib nixpkgs home-manager inputs; };
+      configBuilder = import ./shared/configBuilder.nix { inherit lib nixpkgs home-manager inputs; };
       lib = nixpkgs.lib;
 
       hostsDir = ./hosts;
