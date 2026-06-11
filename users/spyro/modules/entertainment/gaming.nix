@@ -1,8 +1,9 @@
 { pkgs, flake-inputs, ... }:
 let
   patched-moonlight = (pkgs.callPackage ./moonlight-qt-patched.nix { inherit pkgs; });
-  nix-citizen = flake_inputs.nix-citizen.packages.${system};
-  nix-gaming = flake-inputs.nix-gaming.packages.${pkgs.stdenv.hostPlatform.system};
+
+  nix-citizen = with pkgs.stdenv.hostPlatform; flake-inputs.nix-citizen.packages.${system};
+  nix-gaming = with pkgs.stdenv.hostPlatform; flake-inputs.nix-gaming.packages.${system};
 in
 {
   
@@ -29,7 +30,8 @@ in
       jre
       crossmacro
       pcsx2
-      nix-gaming.star-citizen
+      nix-citizen.rsi-launcher
+      nix-citizen.lug-helper
     ];
   };
 
