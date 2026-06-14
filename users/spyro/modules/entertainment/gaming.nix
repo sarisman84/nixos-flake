@@ -30,7 +30,7 @@ in
       jre
       crossmacro
       pcsx2
-      nix-citizen.rsi-launcher-umu
+      nix-citizen.lug-helper
     ];
   };
 
