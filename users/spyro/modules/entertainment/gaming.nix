@@ -24,6 +24,7 @@ in
       steam
       wineWow64Packages.stable
       winetricks
+      wine-staging
       #rusty-path-of-building
       #(callPackage ./modrinth-patched.nix { inherit pkgs; })
       prismlauncher
