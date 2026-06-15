@@ -10,11 +10,18 @@ in
   imports = [
     flake-inputs.nix-flatpak.homeManagerModules.nix-flatpak
   ];
-
-  
   
   programs = {
     lutris.enable = true;
+    rsi-launcher = {
+      enable = true;
+      preCommands = ''
+        export DXVK_NVAPI_SET_NGX_DEBUG_OPTIONS="DLSSIndicator=1,DLSSGIndicator=1"
+        export VK_LOADER_LAYERS_ENABLE=VK_LAYER_MESA_vram_report_limit
+        export VK_VRAM_REPORT_LIMIT_HEAP_SIZE=9216
+        export VK_VRAM_REPORT_LIMIT_DEVICE_ID=0x10de:0x2208
+      '';
+    };
   };
 
   home = {
@@ -31,7 +38,6 @@ in
       jre
       crossmacro
       pcsx2
-      nix-citizen.rsi-launcher
     ];
   };
 
