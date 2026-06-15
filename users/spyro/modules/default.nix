@@ -6,6 +6,5 @@
     ./browser.nix
     ./communication.nix
     ./general.nix
-    ./temp.nix
   ];
 }

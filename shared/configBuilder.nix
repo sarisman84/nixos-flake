@@ -9,6 +9,9 @@ let
          config = {
            allowUnfree = true;
            cudaSupport = true;
+           permittedInsecurePackages = [
+            "electron-39.8.10"
+          ];
          };
    });
    

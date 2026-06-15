@@ -17,6 +17,13 @@ clear:
     echo '[OK][Justfile]: Old builds deleted!'
 
 update host:
+    sudo nix flake update
     echo '[LOG][Justfile]: Creating new build with updated packages to switch to.'
     sudo nixos-rebuild switch --flake .#{{host}} --show-trace --upgrade
+    echo '[OK][Justfile]: Packages updated | Build created!'
+
+full-update host:
+    sudo nix flake update
+    echo '[LOG][Justfile]: Creating new build with updated packages to switch to.'
+    sudo nixos-rebuild boot --flake .#{{host}} --show-trace --upgrade
     echo '[OK][Justfile]: Packages updated | Build created!'
