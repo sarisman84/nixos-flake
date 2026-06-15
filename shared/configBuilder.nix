@@ -99,6 +99,7 @@ in
         inherit pkgs system;
         specialArgs = {
           inherit sharedImports;
+          inherit inputs;
         };
         modules = [
           ./modules/general.nix

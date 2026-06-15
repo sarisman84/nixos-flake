@@ -13,6 +13,7 @@
     ./bluetooth.nix
     ./audio.nix
     ./fancontrol.nix
+    ./modules
   ];
 
   nix.settings = {
