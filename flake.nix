@@ -34,7 +34,7 @@
     , ...
     }:
     let
-      utilities = import ./shared/utilities.nix { inherit lib; };
+      utilities = import ./shared/library/utilities.nix { inherit lib; };
       configBuilder = import ./shared/configBuilder.nix { inherit lib nixpkgs home-manager inputs; };
       lib = nixpkgs.lib;
 

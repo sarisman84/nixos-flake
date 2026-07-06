@@ -1,30 +1,17 @@
-{ config, ... }:
-let cfg = config.nixos.user;
-in
+{ ... }:
 {
-  # cfg = {
-  #   name = "Spyridon Passas";
-  #   groups = [
-  #     "wheel"
-  #     "networkmanager"
-  #   ];
-  #   pkgsConfig = {
-  #     permittedInsecurePackages = [
-  #       "electron-39.8.10"
-  #     ];
-  #   };
-  #   system.modules = [ ./system/default.nix ];
-  # };
-
-  name = "Spyridon Passas";
-  groups = [
-    "wheel"
-    "networkmanager"
-  ];
-  pkgsConfig = {
-    permittedInsecurePackages = [
-      "electron-39.8.10"
+  spyroFlakes.users."spyro" = {
+    groups = [
+      "wheel"
+      "networkmanager"
     ];
+    system = {
+      pkgsConfig = {
+        permittedInsecurePackages = [
+          "electron-39.8.10"
+        ];
+        modules = [ ./system/default.nix ];
+      };
+    };
   };
-  system.modules = [ ./system/default.nix ];
 }
