@@ -50,6 +50,6 @@
 
     in
     {
-      nixosConfigurations = configBuilder.mkNixosConfig hostsDir usersDir;
+      nixosConfigurations = builtins.listToAttrs (configBuilder.mkNixosConfig hostsDir usersDir);
     };
 }

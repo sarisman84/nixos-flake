@@ -6,6 +6,7 @@
   ...
 }:
 let
+  utilities = import ./library/utilities.nix { inherit lib; };
   mkPkgs =
     host:
     let
@@ -21,6 +22,18 @@ let
         permittedInsecurePackages = if permInsPkgs != null then permInsPkgs else [ ];
       };
     });
+  mkSharedImports =
+    directory:
+    let
+      moduleEntries = builtins.readDir directory;
+      modules = utilities.getNixFileNames moduleEntries;
+    in
+    builtins.listToAttrs (
+      map (module: {
+        name = lib.removeSuffix ".nix" module;
+        value = import "${directory}/${module}";
+      }) modules
+    );
   mkNixosUsers =
     userDir: users:
     builtins.listToAttrs (
@@ -54,22 +67,23 @@ in
     hostsDir: usersDir:
     let
       # Evaluate host machines
-      hostModules = map (entry: "${hostsDir}/${entry}/host.nix") builtins.readDir hostsDir;
+      hostModules = map (entry: "${hostsDir}/${entry}/host.nix") (
+        builtins.attrNames (builtins.readDir hostsDir)
+      );
       evalHosts = lib.evalModules {
         modules = [ ./project-types.nix ] ++ hostModules;
       };
-      hosts = evalHosts.config.spyroFlake.hosts;
-      sharedImports = "";
-
+      hosts = builtins.trace (builtins.typeOf evalHosts.config.spyroFlake.hosts) evalHosts.config.spyroFlake.hosts;
+      sharedImports = mkSharedImports ../modules;
     in
-    builtins.listToAttrs map (
+    map (
       host:
       let
         system = host.system;
         pkgs = mkPkgs host;
         userModules = map (entry: "${usersDir}/${entry}/user.nix") host.users;
         evalUsers = lib.evalModules {
-          module = [ ./project-types.nix ] ++ userModules;
+          modules = [ ./project-types.nix ] ++ userModules;
         };
         users = evalUsers.config.spyroFlake.users;
 
@@ -100,7 +114,10 @@ in
             {
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
-              home-manager.extraSpecialArgs.flake-inputs = inputs;
+              #home-manager.extraSpecialArgs.flake-inputs = inputs;
+              home-manager.extraSpecialArgs = {
+                flake-inputs = inputs;
+              };
               home-manager.backupFileExtension = "backup";
 
               home-manager.users = homeManagerUsers;
@@ -108,7 +125,6 @@ in
           ];
         };
       }
-        hosts
-    );
+    ) hosts;
 
 }
