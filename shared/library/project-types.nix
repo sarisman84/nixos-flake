@@ -32,7 +32,7 @@ in
             permittedInsecurePackages = mkOption {
               type = types.listof types.str;
               default = [ ];
-              description= "List of insecure packages to allow installation of."; 
+              description = "List of insecure packages to allow installation of.";
             };
           };
         }
@@ -68,15 +68,10 @@ in
               description = "Path to the user's profile picture (pfp).";
             };
 
-            system = mkOption {
-              type = types.submodule {
-                modules = mkOption {
-                  default = [ ];
-                  type = with types; listOf path;
-                  description = "List of NixOS modules to be included in the user's system configuration.";
-                };
-              };
-              default = { };
+            system-modules = mkOption {
+              default = [ ];
+              type = with types; listOf path;
+              description = "List of NixOS modules to be included in the user's system configuration.";
             };
           };
         }

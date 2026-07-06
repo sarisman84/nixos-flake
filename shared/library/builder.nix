@@ -6,11 +6,11 @@
   ...
 }:
 let
-  utilities = import ./library/utilities.nix { inherit lib; };
+  utilities = import ./utilities.nix { inherit lib; };
   mkPkgs =
     host:
     let
-      system = host.system;
+      system = builtins.traceVerbose (host.system) host.system;
       permInsPkgs = host.permittedInsecurePackages;
     in
     (import nixpkgs {
@@ -25,8 +25,7 @@ let
   mkSharedImports =
     directory:
     let
-      moduleEntries = builtins.readDir directory;
-      modules = utilities.getNixFileNames moduleEntries;
+      modules = utilities.getNixFileNames directory;
     in
     builtins.listToAttrs (
       map (module: {
@@ -37,8 +36,8 @@ let
   mkNixosUsers =
     userDir: users:
     builtins.listToAttrs (
-      map (user: {
-        name = user.name;
+      lib.mapAttrsToList (username: user: {
+        name = username;
         value = {
           isNormalUser = true;
           home = user.home;
@@ -49,50 +48,99 @@ let
   mkHomeManagerUsers =
     userDir: users:
     builtins.listToAttrs (
-      map (user: {
-        name = user.name;
+      lib.mapAttrsToList (username: user: {
+        name = username;
         value = {
-          imports = [ "${userDir}/${user.name}/modules" ];
+          imports = [ "${userDir}/${username}/modules" ];
           home = {
-            username = user.name;
+            username = username;
             homeDirectory = user.home;
             stateVersion = "25.11";
           };
         };
       }) users
     );
+
+  getHosts =
+    hostsDir: projectTypes:
+    let
+      hostModules = map (
+        entry:
+        let
+          path = hostsDir + "/${entry}/host.nix";
+        in
+        builtins.trace ("HostModules Entry - Type: ${builtins.typeOf (path)} | Path:" + path) path
+
+      ) (utilities.getDirectoryNames hostsDir);
+
+      hostMods = builtins.trace (
+        "HostModules loaded: " + builtins.typeOf hostModules + " - " + toString (hostModules)
+      ) hostModules;
+
+      evalHosts = builtins.trace "Evaluating host modules" lib.evalModules {
+        modules = [ projectTypes ] ++ hostMods;
+      };
+
+      config = evalHosts.config.spyroFlake;
+    in
+    builtins.trace ("Hosts loaded: ${toString (lib.mapAttrsToList (name: value: name) config.hosts)}") config.hosts;
+
+  getUsers =
+    usersDir: host: projectTypes:
+    let
+      users = builtins.trace "Users for host: ${toString (host.users)}" host.users;
+      userModules = map (
+        entry:
+        let
+          path = usersDir + "/${entry}/user.nix";
+        in
+        builtins.trace ("UserModules Entry - Type: ${builtins.typeOf (path)} | Path:" + path) path
+      ) users;
+
+      userMods = builtins.trace ("UserModules loaded: " + builtins.typeOf userModules) userModules;
+      evalUsers = builtins.trace "Evaluating user modules" lib.evalModules {
+        modules = [ projectTypes ] ++ userMods;
+      };
+
+      config = evalUsers.config.spyroFlake;
+    in
+    builtins.trace ("Users loaded: ${toString (lib.mapAttrsToList (name: value: name) config.users)}") config.users;
+
 in
 {
   mkNixosConfig =
     hostsDir: usersDir:
     let
       # Evaluate host machines
-      hostModules = map (entry: "${hostsDir}/${entry}/host.nix") (
-        builtins.attrNames (builtins.readDir hostsDir)
-      );
-      evalHosts = lib.evalModules {
-        modules = [ ./project-types.nix ] ++ hostModules;
-      };
-      hosts = builtins.trace (builtins.typeOf evalHosts.config.spyroFlake.hosts) evalHosts.config.spyroFlake.hosts;
-      sharedImports = mkSharedImports ../modules;
-    in
-    map (
-      host:
-      let
-        system = host.system;
-        pkgs = mkPkgs host;
-        userModules = map (entry: "${usersDir}/${entry}/user.nix") host.users;
-        evalUsers = lib.evalModules {
-          modules = [ ./project-types.nix ] ++ userModules;
-        };
-        users = evalUsers.config.spyroFlake.users;
 
-        desktopEnv = import "../../desktop-env/${host.desktopEnv}";
+      projectTypes = ./project-types.nix;
+      pt = builtins.trace (
+        "Project types loaded: " + builtins.typeOf projectTypes + " - " + toString (projectTypes)
+      ) projectTypes;
+
+      hosts = getHosts hostsDir pt;
+      sharedImports = builtins.trace "Shared imports loaded" mkSharedImports ./../modules;
+    in
+    lib.mapAttrsToList (
+      hostName: host:
+      let
+        hostDir = hostsDir + "/${hostName}";
+        users = getUsers usersDir host pt;
+
+        system = builtins.trace ("System to use: ${toString (host.system)}") host.system;
+        pkgs = mkPkgs host;
+
+        desktopEnv = ./../../desktop-env/kde-plasma/default.nix;
+
         nixosUsers = mkNixosUsers usersDir users;
+        debugNixosUsers = builtins.trace ("Users: ${toString (lib.mapAttrsToList (name: value: name) nixosUsers)}") nixosUsers;
+
         homeManagerUsers = mkHomeManagerUsers usersDir users;
+        debugHomeManagerUsers = builtins.trace ("Home Manager Users: ${toString (lib.mapAttrsToList (name: value: name) homeManagerUsers)}") homeManagerUsers;
+
       in
       {
-        name = host.name;
+        name = builtins.trace ("Host Machine: ${toString (hostName)}") hostName;
         value = lib.nixosSystem {
           inherit pkgs system;
           specialArgs = {
@@ -101,13 +149,15 @@ in
           };
 
           modules = [
-            ../modules/general.nix
+            (hostDir + "/configuration.nix")
+            desktopEnv
+            ./../modules/general.nix
+
           ]
-          ++ desktopEnv
-          ++ map (user: user.system.modules) users
+          ++ lib.flatten (lib.mapAttrsToList (usernames: user: user.system-modules) users)
           ++ [
             {
-              users.users = nixosUsers;
+              users.users = debugNixosUsers;
             }
 
             home-manager.nixosModules.home-manager
@@ -120,7 +170,7 @@ in
               };
               home-manager.backupFileExtension = "backup";
 
-              home-manager.users = homeManagerUsers;
+              home-manager.users = debugHomeManagerUsers;
             }
           ];
         };

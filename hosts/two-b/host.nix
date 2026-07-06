@@ -1,6 +1,6 @@
 { ... }:
 {
-  spyroFlakes.hosts."two-b" = {
+  spyroFlake.hosts.two-b = {
     system = "x86_64-linux";
     desktopEnv = "kde-plasma";
     users = [ "spyro" ];

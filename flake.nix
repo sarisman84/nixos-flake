@@ -47,7 +47,6 @@
 
       hostsDir = ./hosts;
       usersDir = ./users;
-
     in
     {
       nixosConfigurations = builtins.listToAttrs (configBuilder.mkNixosConfig hostsDir usersDir);
