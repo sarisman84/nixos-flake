@@ -17,48 +17,39 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    nix-citizen  = {
+    nix-citizen = {
       url = "github:LovingMelody/nix-citizen";
       inputs.nix-gaming.follows = "nix-gaming";
     };
 
     nix-gaming = {
       url = "github:fufexan/nix-gaming";
-    }; 
+    };
   };
 
   outputs =
-    inputs@{ nixpkgs
-    , home-manager
-    , nix-flatpak
-    , ...
+    inputs@{
+      nixpkgs,
+      home-manager,
+      nix-flatpak,
+      ...
     }:
     let
-      utilities = import ./shared/library/utilities.nix { inherit lib; };
-      configBuilder = import ./shared/configBuilder.nix { inherit lib nixpkgs home-manager inputs; };
       lib = nixpkgs.lib;
+      configBuilder = import ./shared/library/builder.nix {
+        inherit
+          lib
+          nixpkgs
+          home-manager
+          inputs
+          ;
+      };
 
       hostsDir = ./hosts;
       usersDir = ./users;
 
-      hostEntries = builtins.readDir hostsDir;
-      hostNames = utilities.getDirectoryNames hostEntries;
-
-      nixosSystems = map
-        (
-          hostName:
-          let
-            hostPath = hostsDir + "/${hostName}";
-          in
-          {
-            name = hostName;
-            value = configBuilder.mkNixosConfig hostPath usersDir;
-          }
-        )
-        hostNames;
-
     in
     {
-      nixosConfigurations = builtins.listToAttrs nixosSystems;
+      nixosConfigurations = configBuilder.mkNixosConfig hostsDir usersDir;
     };
 }
