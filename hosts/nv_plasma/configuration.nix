@@ -69,6 +69,7 @@
     sudo.enable = false;
     sudo-rs.enable = false;
     run0 = {
+      enable = true;
       enableSudoAlias = true;
       wheelNeedsPassword = true;
     };

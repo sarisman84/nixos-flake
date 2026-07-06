@@ -5,6 +5,7 @@
     pamixer
     paprefs
     pavucontrol
+    alsa-tools
   ];
 
   # Enable sound with pipewire.

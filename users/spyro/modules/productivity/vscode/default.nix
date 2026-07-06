@@ -13,6 +13,7 @@ in
     packages = with pkgs; [
       nodejs
       pnpm
+      nil
     ];
   };
 
