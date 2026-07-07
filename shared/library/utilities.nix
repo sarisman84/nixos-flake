@@ -13,7 +13,7 @@
   getNixFileNames =
     dir:
     let
-      entries =  builtins.trace ("Path: ${toString(lib.mapAttrsToList (name: value: name) (builtins.readDir dir))}") (builtins.readDir dir);
+      entries =  builtins.trace ("Found Entries: ${toString(lib.mapAttrsToList (name: value: name) (builtins.readDir dir))}") (builtins.readDir dir);
     in
     lib.attrNames (
       lib.filterAttrs (name: type: type == "regular" && lib.hasSuffix ".nix" name) entries

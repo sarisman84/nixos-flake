@@ -25,14 +25,17 @@ let
   mkSharedImports =
     directory:
     let
-      modules = utilities.getNixFileNames directory;
+      dir = builtins.trace ("Directory: ${directory}") directory;
+      modules = utilities.getNixFileNames dir;
+      result = builtins.listToAttrs (
+        map (module: {
+          name = lib.removeSuffix ".nix" module;
+          value = import "${directory}/${module}";
+        }) modules
+      );
     in
-    builtins.listToAttrs (
-      map (module: {
-        name = lib.removeSuffix ".nix" module;
-        value = import "${directory}/${module}";
-      }) modules
-    );
+    builtins.trace ("Imported modules: ${toString (lib.mapAttrsToList (name: value: "${directory}/${name}") result)}") result;
+
   mkNixosUsers =
     userDir: users:
     builtins.listToAttrs (
@@ -119,7 +122,7 @@ in
       ) projectTypes;
 
       hosts = getHosts hostsDir pt;
-      sharedImports = builtins.trace "Shared imports loaded" mkSharedImports ./../modules;
+      sharedImports = builtins.trace "Shared imports loaded" (mkSharedImports ./../modules);
     in
     lib.mapAttrsToList (
       hostName: host:
@@ -138,6 +141,11 @@ in
         homeManagerUsers = mkHomeManagerUsers usersDir users;
         debugHomeManagerUsers = builtins.trace ("Home Manager Users: ${toString (lib.mapAttrsToList (name: value: name) homeManagerUsers)}") homeManagerUsers;
 
+        generalSharedModules = ./../modules/general.nix;
+        debugGSM = builtins.trace ("General Shared Modules: ${toString generalSharedModules}") generalSharedModules;
+
+        hostConfig = (hostDir + "/configuration.nix");
+        debugHC = builtins.trace ("Host Config: ${toString hostConfig}") hostConfig;
       in
       {
         name = builtins.trace ("Host Machine: ${toString (hostName)}") hostName;
@@ -149,9 +157,9 @@ in
           };
 
           modules = [
-            (hostDir + "/configuration.nix")
+            debugHC
             desktopEnv
-            ./../modules/general.nix
+            debugGSM
 
           ]
           ++ lib.flatten (lib.mapAttrsToList (usernames: user: user.system-modules) users)

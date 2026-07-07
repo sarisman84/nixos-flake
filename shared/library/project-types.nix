@@ -30,7 +30,7 @@ in
             };
 
             permittedInsecurePackages = mkOption {
-              type = types.listof types.str;
+              type = types.listOf types.str;
               default = [ ];
               description = "List of insecure packages to allow installation of.";
             };
