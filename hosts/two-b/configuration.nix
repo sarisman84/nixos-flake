@@ -15,13 +15,6 @@
     ./fancontrol.nix
   ];
 
-  nix.settings = {
-    experimental-features = [
-      "nix-command"
-      "flakes"
-    ];
-  };
-
   # Auto Update
   # system.autoUpgrade = {
   #   enable = true;
@@ -46,16 +39,6 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   boot.kernelModules = [ "ntsync" ];
-
-  # Enable the X11 windowing system.
-  # You can disable this if you're only using the Wayland session.
-  # services.xserver.enable = true;
-  #programs.xwayland.enable = true;
-
-  # Enable the KDE Plasma Desktop Environment.
-  # services.displayManager.sddm.wayland.enable = true;
-  # services.displayManager.sddm.enable = true;
-  # services.desktopManager.plasma6.enable = true;
 
   # Enable CUPS to print documents.
   services.printing.enable = true;

@@ -25,6 +25,10 @@
     nix-gaming = {
       url = "github:fufexan/nix-gaming";
     };
+
+    nuhxboard = {
+      url = "github:justdeeevin/nuhxboard";
+    };
   };
 
   outputs =
