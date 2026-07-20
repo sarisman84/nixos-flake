@@ -1,5 +1,5 @@
 {
   imports = [
-    ./entertainment/rsi-launcher.nix
+    ./entertainment
   ];
 }
