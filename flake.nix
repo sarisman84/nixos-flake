@@ -36,6 +36,7 @@
       nixpkgs,
       home-manager,
       nix-flatpak,
+      nuhxboard,
       ...
     }:
     let

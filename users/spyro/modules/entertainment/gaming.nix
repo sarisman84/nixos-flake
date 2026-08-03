@@ -6,11 +6,11 @@ let
   nix-gaming = with pkgs.stdenv.hostPlatform; flake-inputs.nix-gaming.packages.${system};
 in
 {
-  
+
   imports = [
     flake-inputs.nix-flatpak.homeManagerModules.nix-flatpak
   ];
-  
+
   programs = {
     lutris.enable = true;
     # rsi-launcher = {
@@ -32,7 +32,7 @@ in
       wineWow64Packages.stable
       winetricks
       wine-staging
-      #rusty-path-of-building
+      rusty-path-of-building
       #(callPackage ./modrinth-patched.nix { inherit pkgs; })
       prismlauncher
       jre
@@ -46,4 +46,5 @@ in
     "community.pathofbuilding.PathOfBuilding"
     "sh.ppy.osu"
   ];
+
 }

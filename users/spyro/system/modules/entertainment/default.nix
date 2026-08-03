@@ -1,6 +1,11 @@
+{ pkgs, ... }:
 {
   imports = [
     ./rsi-launcher.nix
-    ./nuxhboard.nix
+    # ./nuhxboard.nix
+  ];
+
+  environment.systemPackages = [
+    pkgs.crossmacro
   ];
 }

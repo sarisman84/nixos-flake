@@ -1,12 +1,7 @@
 { pkgs, inputs, ... }: {
-  imports = [
-    inputs.nuhxboard
+
+  environment.systemPackages = [
+    inputs.nuhxboard.packages.${pkgs.system}.default
   ];
-
-environment.systemPackages = with pkgs;  [
-  packages.${system}.nuhxboard
-  packages.${system}.default
-];
-
 
 }
