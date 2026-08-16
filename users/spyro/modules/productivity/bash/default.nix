@@ -6,7 +6,10 @@
 
   programs.bash = {
     enable = true;
+    initExtra = builtins.readFile ./commands.sh;
     shellAliases = {
+      update = "sudo nixos-rebuild switch --flake";
+
       dnCount = "ls **/default.nix | wc -l";
       dnlCount = "cat **/default.nix | wc -l";
 
@@ -16,7 +19,6 @@
       push = "git push";
       pull = "git pull --rebase";
       switch = "git switch";
-      create = "git switch -c";
       branches = "git branch";
     };
     bashrcExtra = ''
