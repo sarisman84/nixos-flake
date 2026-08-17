@@ -1,4 +1,4 @@
-{ ... }:
+{ inputs, pkgs, ... }:
 {
   services.displayManager.sddm = {
     enable = true;
@@ -11,4 +11,9 @@
   # Required by Noctalia V5
   services.power-profiles-daemon.enable = true;
   services.upower.enable = true;
+
+  # Installing Noctalia V5
+  enviroment.systemPackages = [
+    inputs.noctalia.packages.${pkgs.stdenv.hostPlatform.system}.default
+  ];
 }
