@@ -27,7 +27,7 @@ in
   home = {
     packages = with pkgs; [
       #moonlight-qt
-      patched-moonlight
+      #patched-moonlight
       steam
       wineWow64Packages.stable
       winetricks
@@ -37,7 +37,7 @@ in
       prismlauncher
       jre
       crossmacro
-      pcsx2
+      #pcsx2
       # nix-citizen.rsi-launcher
     ];
   };

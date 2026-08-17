@@ -29,6 +29,11 @@
     nuhxboard = {
       url = "github:justdeeevin/nuhxboard";
     };
+
+    noctalia = {
+      url = "github:noctalia-dev/noctalia";
+      inputs.nixpkgs.follows = "nixpkgs"; # this line is optional, prevents downloading two versions of nixpkgs but disables cache
+    };
   };
 
   outputs =
@@ -52,8 +57,9 @@
 
       hostsDir = ./hosts;
       usersDir = ./users;
+      desktopDir = ./desktop-env;
     in
     {
-      nixosConfigurations = builtins.listToAttrs (configBuilder.mkNixosConfig hostsDir usersDir);
+      nixosConfigurations = builtins.listToAttrs (configBuilder.mkNixosConfig hostsDir usersDir desktopDir);
     };
 }

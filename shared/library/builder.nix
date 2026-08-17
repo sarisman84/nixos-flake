@@ -108,11 +108,19 @@ let
       config = evalUsers.config.spyroFlake;
     in
     builtins.trace ("Users loaded: ${toString (lib.mapAttrsToList (name: value: name) config.users)}") config.users;
+  
+  getDesktopEnv = 
+    desktopEnvDir: host:
+    let 
+      desktopEnv = builtins.trace "Host uses desktop enviroment: ${toString(host.desktopEnv)}" host.desktopEnv;
+      path = "${desktopEnvDir}/${desktopEnv}/default.nix";
+    in
+    builtins.trace ("Desktop enviroment selected: ${toString(path)}") path;
 
 in
 {
   mkNixosConfig =
-    hostsDir: usersDir:
+    hostsDir: usersDir: desktopDir:
     let
       # Evaluate host machines
 
@@ -133,7 +141,7 @@ in
         system = builtins.trace ("System to use: ${toString (host.system)}") host.system;
         pkgs = mkPkgs host;
 
-        desktopEnv = ./../../desktop-env/kde-plasma/default.nix;
+        desktopEnv = getDesktopEnv desktopDir host;
 
         nixosUsers = mkNixosUsers usersDir users;
         debugNixosUsers = builtins.trace ("Users: ${toString (lib.mapAttrsToList (name: value: name) nixosUsers)}") nixosUsers;

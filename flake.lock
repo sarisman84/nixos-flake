@@ -303,6 +303,26 @@
         "type": "github"
       }
     },
+    "noctalia": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1786905003,
+        "narHash": "sha256-9cqskxPJZ+I5+As8keeu4Vd/UZFhfHdO+FXHENfbq4Y=",
+        "owner": "noctalia-dev",
+        "repo": "noctalia",
+        "rev": "ed64dbc392f2f90d12712d6aadca32fcafd17bb4",
+        "type": "github"
+      },
+      "original": {
+        "owner": "noctalia-dev",
+        "repo": "noctalia",
+        "type": "github"
+      }
+    },
     "nuhxboard": {
       "inputs": {
         "crane": "crane",
@@ -332,6 +352,7 @@
         "nix-flatpak": "nix-flatpak",
         "nix-gaming": "nix-gaming",
         "nixpkgs": "nixpkgs_3",
+        "noctalia": "noctalia",
         "nuhxboard": "nuhxboard"
       }
     },
