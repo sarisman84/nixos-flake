@@ -10,5 +10,6 @@
           ./ollama.nix
           ./jetbrains
           ./teams.nix
+          ./antigravity.nix
      ];
 }

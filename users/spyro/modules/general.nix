@@ -7,6 +7,7 @@
       vhs
       vlc
       filezilla
+      postman
     ];
   };
 }

@@ -48,6 +48,8 @@ in
             bradlc.vscode-tailwindcss
             dbaeumer.vscode-eslint
             #austenc.tailwind-docs
+            
+            angular.ng-template
 
             # Other
             prisma.prisma

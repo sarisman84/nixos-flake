@@ -13,7 +13,7 @@
   services.upower.enable = true;
 
   # Installing Noctalia V5
-  enviroment.systemPackages = [
+  environment.systemPackages = [
     inputs.noctalia.packages.${pkgs.stdenv.hostPlatform.system}.default
   ];
 }
