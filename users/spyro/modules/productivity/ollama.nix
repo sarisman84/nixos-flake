@@ -6,7 +6,9 @@
 
   home = {
     packages = with pkgs; [
-      claude-code
+       opencode
+       opencode-desktop
+       opencode-claude-auth
     ];
   };
 }
