@@ -10,5 +10,7 @@
           ./ollama.nix
           ./jetbrains
           ./teams.nix
+          ./web.nix
+          ./neovim.nix
      ];
 }
