@@ -39,6 +39,7 @@ in
       jre
       crossmacro
       heroic
+      packwiz
       #pcsx2
       # nix-citizen.rsi-launcher
     ];
