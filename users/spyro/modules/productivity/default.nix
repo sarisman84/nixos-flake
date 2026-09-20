@@ -8,7 +8,7 @@
     ./vscode
     ./kitty.nix
     ./bash
-    ./llm.nix
+    ./llm-agent
     ./jetbrains
     ./teams.nix
     ./web.nix
