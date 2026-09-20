@@ -166,13 +166,13 @@ in
       in
       {
         name = builtins.trace ("Host Machine: ${toString (hostName)}") hostName;
-        value = lib.nixosSystem {
-          inherit pkgs system;
-           specialArgs = {
-             inherit sharedImports;
-             inherit inputs;
-             inherit pkgsStable;
-           };
+         value = lib.nixosSystem {
+           inherit pkgs system;
+            specialArgs = {
+              inherit sharedImports;
+              inherit inputs;
+              inherit pkgsStable;
+            };
 
           modules = [
             debugHC
@@ -191,9 +191,10 @@ in
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
               #home-manager.extraSpecialArgs.flake-inputs = inputs;
-              home-manager.extraSpecialArgs = {
-                flake-inputs = inputs;
-              };
+               home-manager.extraSpecialArgs = {
+                 flake-inputs = inputs;
+                 inherit pkgsStable;
+               };
               home-manager.backupFileExtension = "backup";
 
               home-manager.users = debugHomeManagerUsers;
