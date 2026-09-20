@@ -90,6 +90,8 @@ in
     pkgs.opencode-claude-auth
   ];
 
+  home.file.".config/opencode/opencode.json".source = ./opencode.json;
+
   # home.sessionPath = [ "$HOME/.local/bin" ];
 
   # home.activation.llamaCppModels = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
