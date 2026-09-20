@@ -33,7 +33,8 @@ let
     curl_bin="${pkgs.curl}/bin/curl"
     llama_bin="${pkgsStable.llama-cpp}/bin/llama-server"
     opencode_bin="${pkgs.opencode}/bin/opencode"
-    log_file="/tmp/opencode-llama-server.log"
+^    logsDir="${config.home.homeDirectory}/config/nixos-flake/users/spyro/modules/productivity/llm-agent/logs"
+    log_file="${logsDir}/opencode-llama-server.log"
     server_pid=""
 
     cleanup() {
@@ -43,6 +44,7 @@ let
       fi
     }
 
+^    mkdir -p "$$logsDir"
     trap cleanup EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM
