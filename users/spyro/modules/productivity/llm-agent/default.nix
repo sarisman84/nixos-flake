@@ -60,16 +60,15 @@ let
         if ! kill -0 "$server_pid" 2>/dev/null; then
           echo "llama-server exited during startup" >&2
           tail -n 50 "$log_file" >&2 || true
-          exit 1
+          break
         fi
 
         sleep 1
       done
 
       if ! "$curl_bin" --fail --silent "${llamaHealthUrl}" >/dev/null 2>&1; then
-        echo "llama-server did not become healthy in time" >&2
+        echo "llama-server is not healthy; falling back to plain opencode" >&2
         tail -n 50 "$log_file" >&2 || true
-        exit 1
       fi
     fi
 
