@@ -1,10 +1,6 @@
 [
   {
-    "name": "tinyllama-1.1b-chat-q4.gguf",
-    "url": "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF/resolve/main/tinyllama-1.1b-chat-v1.0.Q4_K_M.gguf"
-  },
-  {
-    "name": "phi-2-q4.gguf",
-    "url": "https://huggingface.co/TheBloke/phi-2-GGUF/resolve/main/phi-2.Q4_K_M.gguf"
+    "name": "bonsai-2-27b-f16.gguf",
+    "url": "https://huggingface.co/prism-ml/Ternary-Bonsai-2-27B-gguf/resolve/main/Ternary-Bonsai-2-27B-F16.gguf"
   }
 ]
