@@ -4,3 +4,6 @@ result-*
 
 # Ignore automatically generated direnv output
 .direnv
+
+# Ignore local llm-agent environment files
+users/spyro/modules/productivity/llm-agent/env/*.env

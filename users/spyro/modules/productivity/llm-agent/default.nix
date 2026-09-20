@@ -15,9 +15,20 @@ let
   llamaHost = "127.0.0.1";
   llamaPort = "8080";
   llamaHealthUrl = "http://${llamaHost}:${llamaPort}/health";
+  envDir = "${config.home.homeDirectory}/config/nixos-flake/users/spyro/modules/productivity/llm-agent/env";
 
   opencodeWrapper = pkgs.writeShellScriptBin "opencode" ''
     set -euo pipefail
+
+    env_dir="${envDir}"
+    if [ -d "$env_dir" ]; then
+      for env_file in "$env_dir"/*.env; do
+        [ -e "$env_file" ] || continue
+        set -a
+        . "$env_file"
+        set +a
+      done
+    fi
 
     curl_bin="${pkgs.curl}/bin/curl"
     llama_bin="${pkgsStable.llama-cpp}/bin/llama-server"
