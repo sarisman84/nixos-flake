@@ -53,7 +53,7 @@ let
       server_pid=$!
 
       for _ in $(seq 1 180); do
-        if "$curl_bin" --fail --silent "$llamaHealthUrl" >/dev/null 2>&1; then
+        if "$curl_bin" --fail --silent "${llamaHealthUrl}" >/dev/null 2>&1; then
           break
         fi
 
@@ -66,7 +66,7 @@ let
         sleep 1
       done
 
-      if ! "$curl_bin" --fail --silent "$llamaHealthUrl" >/dev/null 2>&1; then
+      if ! "$curl_bin" --fail --silent "${llamaHealthUrl}" >/dev/null 2>&1; then
         echo "llama-server did not become healthy in time" >&2
         tail -n 50 "$log_file" >&2 || true
         exit 1
