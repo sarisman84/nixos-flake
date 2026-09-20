@@ -17,7 +17,7 @@ let
   llamaHealthUrl = "http://${llamaHost}:${llamaPort}/health";
   envDir = "${config.home.homeDirectory}/config/nixos-flake/users/spyro/modules/productivity/llm-agent/env";
 
-  opencodeWrapper = pkgs.writeShellScriptBin "opencode" ''
+  opencode = pkgs.writeShellScriptBin "opencode" ''
     set -euo pipefail
 
     env_dir="${envDir}"
@@ -95,7 +95,7 @@ in
   home.packages = [
     pkgsStable.llama-cpp
     pkgsStable.llama-swap
-    opencodeWrapper
+    opencode
     pkgs.opencode-desktop
     pkgs.opencode-claude-auth
   ];
