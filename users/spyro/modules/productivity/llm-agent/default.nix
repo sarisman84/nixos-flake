@@ -18,9 +18,7 @@ let
   envDir = "${config.home.homeDirectory}/config/nixos-flake/users/spyro/modules/productivity/llm-agent/env";
 
   opencodeWrapper = pkgs.writeShellScriptBin "opencode" ''
-    set -euo pipefail
-    log_file="/tmp/opencode-llama-server.log"
-    exec > "$log_file" 2>&1 &
+        set -euo pipefail
 
     env_dir="${envDir}"
     if [ -d "$env_dir" ]; then
@@ -33,26 +31,44 @@ let
     fi
 
     curl_bin="${pkgs.curl}/bin/curl"
-    llama_bin="${pkgsStable.llama-cpp}/bin/llama"
+    llama_bin="${pkgsStable.llama-cpp}/bin/llama-server"
     opencode_bin="${pkgs.opencode}/bin/opencode"
     log_file="/tmp/opencode-llama-server.log"
     server_pid=""
 
+    cleanup() {
+      if [ -n "$server_pid" ]; then
         kill "$server_pid" 2>/dev/null || true
         wait "$server_pid" 2>/dev/null || true
       fi
     }
 
     trap cleanup EXIT
-    cleanup() {
-      if [ -n "$server_pid ] ]; then
-        kill "$server_pid" 2>/dev/null || true
-    }
-        kill "$server_pid" 2>/dev/null || true
-        wait "$server_pid" 2>/dev/null || true
-      fi
-    }
-0        kill "$server_pid" 2>/dev/null || true
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+
+    if ! "$curl_bin" --fail --silent --show-error "${llamaHealthUrl}" >/dev/null 2>&1; then
+      echo "Starting llama-server for ${llamaModel}"
+      "$llama_bin" -hf "${llamaModel}" --host "${llamaHost}" --port "${llamaPort}" >"$log_file" 2>&1 &
+      server_pid=$!
+
+      for _ in $(seq 1 180); do
+        if "$curl_bin" --fail --silent "${llamaHealthUrl}" >/dev/null 2>&1; then
+          break
+        fi
+
+        if ! kill -0 "$server_pid" 2>/dev/null; then
+          echo "llama-server exited during startup" >&2
+          tail -n 50 "$log_file" >&2 || true
+          break
+        fi
+
+        sleep 1
+      done
+
+      if ! "$curl_bin" --fail --silent "${llamaHealthUrl}" >/dev/null 2>&1; then
+        echo "llama-server is not healthy; falling back to plain opencode" >&2
+        tail -n 50 "$log_file" >&2 || true
       fi
     fi
 
