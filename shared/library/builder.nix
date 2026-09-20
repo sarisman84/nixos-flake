@@ -12,16 +12,23 @@ let
     let
       system = builtins.traceVerbose (host.system) host.system;
       permInsPkgs = host.permittedInsecurePackages;
-    in
-    (import nixpkgs {
-      inherit system;
-
-      config = {
+      
+      pkgsConfig = {
         allowUnfree = true;
         cudaSupport = true;
         permittedInsecurePackages = if permInsPkgs != null then permInsPkgs else [ ];
       };
-    });
+    in
+    {
+      unstable = import nixpkgs {
+        inherit system;
+        config = pkgsConfig;
+      };
+      stable = import inputs.nixpkgs-stable {
+        inherit system;
+        config = pkgsConfig;
+      };
+    };
   mkSharedImports =
     directory:
     let
@@ -139,7 +146,9 @@ in
         users = getUsers usersDir host pt;
 
         system = builtins.trace ("System to use: ${toString (host.system)}") host.system;
-        pkgs = mkPkgs host;
+        allPkgs = mkPkgs host;
+        pkgs = allPkgs.unstable;
+        pkgsStable = allPkgs.stable;
 
         desktopEnv = getDesktopEnv desktopDir host;
 
@@ -159,10 +168,11 @@ in
         name = builtins.trace ("Host Machine: ${toString (hostName)}") hostName;
         value = lib.nixosSystem {
           inherit pkgs system;
-          specialArgs = {
-            inherit sharedImports;
-            inherit inputs;
-          };
+           specialArgs = {
+             inherit sharedImports;
+             inherit inputs;
+             inherit pkgsStable;
+           };
 
           modules = [
             debugHC
