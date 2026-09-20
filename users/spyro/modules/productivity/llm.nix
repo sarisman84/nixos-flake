@@ -1,11 +1,11 @@
-{ pkgs, ... }:
+{ pkgs, pkgsStable, ... }:
 {
   home = {
-    packages = with pkgs; [
-      llama-cpp
-      opencode
-      opencode-desktop
-      opencode-claude-auth
+    packages = [
+      pkgsStable.llama-cpp
+      pkgs.opencode
+      pkgs.opencode-desktop
+      pkgs.opencode-claude-auth
     ];
   };
 }
