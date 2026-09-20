@@ -20,23 +20,32 @@
       }
     }
   },
-  "provider": {
+"provider": {
     "llama.cpp": {
-      "npm": "@ai-sdk/openai-compatible",
-      "name": "llama server (local)",
-      "options": {
-        "baseURL": "http://127.0.0.1:8080/v1"
-      },
-      "models": {
-        "qwen3.8-27b": {
-          "name": "Qwen3.8 27B - GGUF:UD-Q6_K_M",
-          "limit": {
-            "context": 200000,
-            "output": 100000
-          }
+        "npm": "@ai-sdk/openai-compatible",
+        "name": "llama server (local)",
+        "options": {
+            "baseURL": "http://127.0.0.1:8080/v1",
+            "logsDirectory": "${HOME}/.config/nixos-flake/users/spyro/modules/productivity/llm-agent/logs",
+            "logFile": "opencode-llama-server.log"
+        },
+        "models": {
+            "qwen3.8-27b": {
+                "name": "Qwen3.8 27B - GGUF:UD-Q6_K_M",
+                "limit": {
+                    "context": 200000,
+                    "output": 100000
+                }
+            },
+            "bonsai-27b": {
+                "name": "Bonsai 27B - GGUF:Q1_0",
+                "limit": {
+                    "context": 200000,
+                    "output": 100000
+                }
+            }
         }
-      }
     }
-  },
+},
   "plugin": ["opencode-parser"]
 }
