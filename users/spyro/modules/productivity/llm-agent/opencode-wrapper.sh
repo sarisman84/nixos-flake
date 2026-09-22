@@ -151,7 +151,10 @@ if [ $mode = "cloud" ]; then
   echo "Cloud mode: skipping llama-server"
 elif ! "$curl_bin" --fail --silent --show-error "__llama_health_url__" >/dev/null 2>&1; then
   echo "Starting llama-server for $hf_model"
-  "$llama_bin" -hf "$hf_model" -a "$alias_name" --host "__llama_host__" --port "__llama_port__" --jinja --reasoning off >"$log_file" 2>&1 &
+  "$llama_bin" -hf "$hf_model" -a "$alias_name" --host "__llama_host__" --port "__llama_port__" \
+    --jinja \
+    --reasoning off \
+    >"$log_file" 2>&1 &
   server_pid=$!
 
   for _ in $(seq 1 180); do
