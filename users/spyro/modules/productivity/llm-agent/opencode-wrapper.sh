@@ -27,6 +27,13 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+opencode_args=()
+
+if [ $# -gt 0 ] && [[ "$1" == */* ]]; then
+  opencode_args+=("--model" "$1")
+  shift
+fi
+
 if ! "$curl_bin" --fail --silent --show-error "__llama_health_url__" >/dev/null 2>&1; then
   echo "Starting llama-server for __llama_model__"
   "$llama_bin" -hf "__llama_model__" --host "__llama_host__" --port "__llama_port__" >"$log_file" 2>&1 &
@@ -52,4 +59,4 @@ if ! "$curl_bin" --fail --silent --show-error "__llama_health_url__" >/dev/null 
   fi
 fi
 
-"$opencode_bin" "$@"
+"$opencode_bin" "${opencode_args[@]}" "$@"
