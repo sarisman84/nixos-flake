@@ -17,63 +17,31 @@ let
   llamaHealthUrl = "http://${llamaHost}:${llamaPort}/health";
   envDir = "${config.home.homeDirectory}/config/nixos-flake/users/spyro/modules/productivity/llm-agent/env";
 
-  opencodeWrapper = pkgs.writeShellScriptBin "opencode" ''
-        set -euo pipefail
-
-    env_dir="${envDir}"
-    if [ -d "$env_dir" ]; then
-      for env_file in "$env_dir"/*.env; do
-        [ -e "$env_file" ] || continue
-        set -a
-        . "$env_file"
-        set +a
-      done
-    fi
-
-    curl_bin="${pkgs.curl}/bin/curl"
-    llama_bin="${pkgsStable.llama-cpp}/bin/llama-server"
-    opencode_bin="${pkgs.opencode}/bin/opencode"
-    log_file="/tmp/opencode-llama-server.log"
-    server_pid=""
-
-    cleanup() {
-      if [ -n "$server_pid" ]; then
-        kill "$server_pid" 2>/dev/null || true
-        wait "$server_pid" 2>/dev/null || true
-      fi
-    }
-
-    trap cleanup EXIT
-    trap 'exit 130' INT
-    trap 'exit 143' TERM
-
-    if ! "$curl_bin" --fail --silent --show-error "${llamaHealthUrl}" >/dev/null 2>&1; then
-      echo "Starting llama-server for ${llamaModel}"
-      "$llama_bin" -hf "${llamaModel}" --host "${llamaHost}" --port "${llamaPort}" >"$log_file" 2>&1 &
-      server_pid=$!
-
-      for _ in $(seq 1 180); do
-        if "$curl_bin" --fail --silent "${llamaHealthUrl}" >/dev/null 2>&1; then
-          break
-        fi
-
-        if ! kill -0 "$server_pid" 2>/dev/null; then
-          echo "llama-server exited during startup" >&2
-          tail -n 50 "$log_file" >&2 || true
-          break
-        fi
-
-        sleep 1
-      done
-
-      if ! "$curl_bin" --fail --silent "${llamaHealthUrl}" >/dev/null 2>&1; then
-        echo "llama-server is not healthy; falling back to plain opencode" >&2
-        tail -n 50 "$log_file" >&2 || true
-      fi
-    fi
-
-    "$opencode_bin" "$@"
-  '';
+   wrapperScript = builtins.readFile ./opencode-wrapper.sh;
+  opencodeWrapper = pkgs.writeShellScriptBin "opencode" (
+    lib.replaceStrings
+      [
+        "__env_dir__"
+        "__curl_bin__"
+        "__llama_bin__"
+        "__opencode_bin__"
+        "__llama_health_url__"
+        "__llama_model__"
+        "__llama_host__"
+        "__llama_port__"
+      ]
+      [
+        envDir
+        "${pkgs.curl}/bin/curl"
+        "${pkgsStable.llama-cpp}/bin/llama-server"
+        "${pkgs.opencode}/bin/opencode"
+        llamaHealthUrl
+        llamaModel
+        llamaHost
+        llamaPort
+      ]
+      wrapperScript
+  );
   # (so a half-downloaded file never looks "done" to a later activation run).
   # downloadModelScript = lib.concatStringsSep "\n" (
   #   map (m: ''
