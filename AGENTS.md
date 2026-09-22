@@ -39,6 +39,11 @@ AGENTS.md                  # this file
 - `pkgs` = nixos-unstable; `pkgsStable` = nixos-26.05. `llama-cpp` (used by `llm-agent`) is intentionally pinned to stable.
 - Never commit `env/*.env` (gitignored; holds API keys).
 
+## Version Control
+
+- Commits should be concise and use an appropriate prefix (e.g. `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`).
+- Always ask the user to validate your work before committing or pushing to the repo.
+
 ## Commands
 
 ### Deploy / config (bash functions — interactive shell only)
@@ -85,5 +90,4 @@ Packages available: `nix`, `git`, `alejandra`, `shellcheck`.
 - The `opencode` wrapper script (in `users/spyro/modules/productivity/llm-agent/opencode-wrapper.sh`) is baked into the Nix store. Rebuild (`config build two-b`) before testing changes — see `llm-agent/TESTING.md`.
 - `env/*.env` files are gitignored (API keys for figma/stitch). Never commit or read secrets into flake output.
 - `sudo` is actually `run0` with `enableSudoAlias` and `wheelNeedsPassword = true` — deploy commands prompt for a password and won't run unattended.
-- `models.json` in `llm-agent/` is referenced but currently unused (download logic is commented out).
 - `opencode.json` is managed via Home Manager; symlinked into `~/.config/opencode/opencode.json`.
