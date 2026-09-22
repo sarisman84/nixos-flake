@@ -1,0 +1,51 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "llama.cpp/qwen3.8-27b",
+  "mcp": {
+    "figma": {
+      "type": "local",
+      "command": ["npx", "-y", "figma-developer-mcp", "--stdio"],
+      "environment": {
+        "FIGMA_API_KEY": "{env:FIGMA_API_KEY}"
+      },
+      "enabled": true,
+      "timeout": 15000
+    },
+    "stitch": {
+      "type": "remote",
+      "url": "https://stitch.googleapis.com/mcp",
+      "enabled": true,
+      "headers": {
+        "X-Goog-Api-Key": "{env:STITCH_API_KEY}"
+      }
+    }
+  },
+"provider": {
+    "llama.cpp": {
+        "npm": "@ai-sdk/openai-compatible",
+        "name": "llama server (local)",
+        "options": {
+            "baseURL": "http://127.0.0.1:8080/v1",
+            "logsDirectory": "${HOME}/.config/nixos-flake/users/spyro/modules/productivity/llm-agent/logs",
+            "logFile": "opencode-llama-server.log"
+        },
+        "models": {
+            "qwen3.8-27b": {
+                "name": "Qwen3.8 27B - GGUF:UD-Q6_K_M",
+                "limit": {
+                    "context": 200000,
+                    "output": 100000
+                }
+            },
+            "bonsai-27b": {
+                "name": "Bonsai 27B - GGUF:Q1_0",
+                "limit": {
+                    "context": 200000,
+                    "output": 100000
+                }
+            }
+        }
+    }
+},
+  "plugin": ["opencode-parser"]
+}

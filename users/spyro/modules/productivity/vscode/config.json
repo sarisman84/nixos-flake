@@ -1,13 +1,35 @@
 {
-  "files.associations": {
-    "*.css": "tailwindcss",
-    "*.uxml": "xml",
-    "*.uss": "css"
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
+  "[html]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "editor.fontFamily": "'FiraCode', monospace",
   "editor.quickSuggestions": {
     "strings": "on"
   },
-  "editor.fontFamily": "'FiraCode', monospace",
+  "files.associations": {
+    "*.css": "tailwindcss",
+    "*.uss": "css",
+    "*.uxml": "xml"
+  },
+  "nix.enableLanguageServer": true,
   "nix.formatterPath": [
     "nixpkgs-fmt",
     "nixfmt",
@@ -19,7 +41,6 @@
     "--",
     "-"
   ],
-  "nix.enableLanguageServer": true,
   "nix.serverPath": "nil",
   "nix.serverSettings": {
     "nixd": {
@@ -27,36 +48,17 @@
         "command": ["nixpkgs-fmt"]
       },
       "options": {
-        "nixos": {
-          "expr": "(builtins.getFlake \"/absolute/path/to/flake\").nixosConfigurations.<name>.options"
-        },
         "home-manager": {
           "expr": "(builtins.getFlake \"/absolute/path/to/flake\").homeConfigurations.<name>.options"
         },
         "nix-darwin": {
           "expr": "(builtins.getFlake \"${workspaceFolder}/path/to/flake\").darwinConfigurations.<name>.options"
+        },
+        "nixos": {
+          "expr": "(builtins.getFlake \"/absolute/path/to/flake\").nixosConfigurations.<name>.options"
         }
       }
     }
   },
-  "[jsonc]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "[typescriptreact]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "[json]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "[typescript]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "[markdown]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "[css]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },"[html]": {
-    "editor.defaultFormatter": "esbenp.prettier-vscode"
-  }
+  "js/ts.experimental.useTsgo": true
 }

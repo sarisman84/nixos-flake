@@ -37,30 +37,45 @@
     };
   };
 
-  outputs =
-    inputs@{
-      nixpkgs,
-      home-manager,
-      nix-flatpak,
-      nuhxboard,
-      ...
-    }:
-    let
-      lib = nixpkgs.lib;
-      configBuilder = import ./shared/library/builder.nix {
-        inherit
-          lib
-          nixpkgs
-          home-manager
-          inputs
-          ;
-      };
-
-      hostsDir = ./hosts;
-      usersDir = ./users;
-      desktopDir = ./desktop-env;
-    in
-    {
-      nixosConfigurations = builtins.listToAttrs (configBuilder.mkNixosConfig hostsDir usersDir desktopDir);
+  outputs = inputs @ {
+    nixpkgs,
+    home-manager,
+    nix-flatpak,
+    nuhxboard,
+    ...
+  }: let
+    lib = nixpkgs.lib;
+    configBuilder = import ./shared/library/builder.nix {
+      inherit
+        lib
+        nixpkgs
+        home-manager
+        inputs
+        ;
     };
+
+    hostsDir = ./hosts;
+    usersDir = ./users;
+    desktopDir = ./desktop-env;
+  in {
+    nixosConfigurations = builtins.listToAttrs (configBuilder.mkNixosConfig hostsDir usersDir desktopDir);
+
+    devShells = lib.genAttrs ["x86_64-linux" "aarch64-linux"] (
+      system: let
+        pkgs = nixpkgs.legacyPackages.${system};
+      in {
+        default = pkgs.mkShell {
+          packages = [
+            pkgs.nix
+            pkgs.git
+            pkgs.alejandra
+            pkgs.shellcheck
+          ];
+          shellHook = ''
+            echo "nixos-flake devShell — see AGENTS.md for layout, commands, and the check/build/deploy workflow."
+          '';
+        };
+      }
+    );
+  };
 }
