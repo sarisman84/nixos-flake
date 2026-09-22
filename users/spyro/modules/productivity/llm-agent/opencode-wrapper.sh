@@ -27,14 +27,27 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-opencode_args=()
+opencode_args=("$@")
+cloud=false
+args=()
 
-if [ $# -gt 0 ] && [[ "$1" == */* ]]; then
-  opencode_args+=("--model" "$1")
-  shift
+for arg in "${opencode_args[@]}"; do
+  if [ "$arg" = "--cloud" ]; then
+    cloud=true
+  else
+    args+=("$arg")
+  fi
+done
+
+if [ ${#args[@]} -gt 0 ] && [[ "${args[0]}" == */* ]]; then
+  opencode_args=(--model "${args[0]}" "${args[@]:1}")
+else
+  opencode_args=("${args[@]}")
 fi
 
-if ! "$curl_bin" --fail --silent --show-error "__llama_health_url__" >/dev/null 2>&1; then
+if [ "$cloud" = true ]; then
+  echo "Cloud mode: skipping llama-server"
+elif ! "$curl_bin" --fail --silent --show-error "__llama_health_url__" >/dev/null 2>&1; then
   echo "Starting llama-server for __llama_model__"
   "$llama_bin" -hf "__llama_model__" --host "__llama_host__" --port "__llama_port__" >"$log_file" 2>&1 &
   server_pid=$!
@@ -59,4 +72,4 @@ if ! "$curl_bin" --fail --silent --show-error "__llama_health_url__" >/dev/null 
   fi
 fi
 
-"$opencode_bin" "${opencode_args[@]}" "$@"
+"$opencode_bin" "${opencode_args[@]}"
