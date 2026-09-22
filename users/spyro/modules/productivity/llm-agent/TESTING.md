@@ -159,13 +159,40 @@ opencode --model llama.cpp/bonsai-27b run "Describe yourself briefly"
 
 ---
 
+## Commit: Add MTP speculative decoding + sampling params to llama-server
+
+The local server now always starts with:
+`--jinja --reasoning off --parallel 1 --spec-type draft-mtp --temp 0.7 --top-p 0.80 --top-k 20 --min-p 0.0 --presence-penalty 1.5 --repeat-penalty 1.0`
+
+Note: the reference command's `--chat-template-kwargs '{"enable_thinking": false}'` was replaced by `--reasoning off`, the current way to disable thinking (llama.cpp b64739e).
+
+Steps:
+1. Rebuild: `just build two-b`
+2. Kill any stale server: `pkill -f llama-server || true`
+3. Launch a local model: `opencode --model llama.cpp/qwen3.8-27b`
+
+Verification (in another terminal while opencode is running):
+```bash
+# MTP + sampling flags present in the launched command
+grep -iE "spec-type|draft-mtp|reasoning|presence-penalty" /tmp/opencode-llama-server.log
+
+# Server reports its loaded models (alias still routes correctly)
+curl -s http://127.0.0.1:8080/v1/models | head -50
+```
+
+Expected:
+- Log shows the server was started with `--spec-type draft-mtp` and `--reasoning off`.
+- `/v1/models` lists the alias (`qwen3.8-27b`), so opencode can still route to it.
+- opencode completes a prompt (e.g. `opencode --model llama.cpp/qwen3.8-27b run "Say hello in 5 words"`).
+- MTP speedup (if any) is visible in the server log's token/s stats during generation.
+
+---
+
 ## Commit history (expected)
 
 ```
 feat(llm-agent): allow model name argument to opencode wrapper
 feat(llm-agent): add --cloud flag to skip llama-server
 fix(llm-agent): enforce --model/--cloud keywords and launch requested model
+feat(llm-agent): launch llama-server with MTP speculative decoding and sampling params
 ```
-
-The model-mapping + enforced-keyword-usage change (commit 3 scope) is still
-**uncommitted** — validate it, then commit before moving on.
