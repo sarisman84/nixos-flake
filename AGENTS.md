@@ -17,7 +17,11 @@ users/<user>/              # Home Manager user configs
     modules/               #   Home Manager modules auto-imported (general, bash, llm-agent, vscode, git, ...)
 desktop-env/               # Desktop environment modules (kde-plasma, niri)
 shared/library/            # Shared library
-  builder.nix              #   evaluates hosts → users → nixosSystem + home-manager
+  builder.nix              #   orchestrator: assembles nixosSystem per host
+  logging.nix              #   NIXOS_LOG-gated trace logging (info/debug/error)
+  pkgs.nix                 #   mkPkgs: builds unstable + stable nixpkgs sets
+  hosts.nix                #   getHosts, getDesktopEnv, mkSharedImports
+  users.nix                #   getUsers, mkNixosUsers, mkHomeManagerUsers
   project-types.nix        #   option schemas (spyroFlake.hosts, spyroFlake.users)
   utilities.nix            #   getDirectoryNames, getNixFileNames
 shared/modules/            # Shared NixOS modules (e.g. nvidia.nix)
@@ -31,6 +35,7 @@ AGENTS.md                  # this file
 - Each `users/<user>/user.nix` declares `spyroFlake.users.<user>` with `{ groups, home, pfp, system-modules }`.
 - SpecialArgs passed to modules: `pkgs` (unstable), `pkgsStable` (26.05), `sharedImports` (from `shared/modules/`), `inputs`.
 - Home Manager modules use `{ pkgs, lib, config, ... }`. NixOS modules use `{ pkgs, sharedImports, ... }`.
+- Set `NIXOS_LOG=1` (info) or `NIXOS_LOG=2` (verbose) to see evaluation traces. Use the `log [level]` bash command to view them.
 
 ## Conventions
 

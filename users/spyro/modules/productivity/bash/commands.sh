@@ -145,6 +145,26 @@ config_build() {
     sudo nixos-rebuild switch --flake ~/config/nixos-flake/#"$*" --show-trace
 }
 
+log() {
+    local level="${1:-${NIXOS_LOG:-1}}"
+    local flake_dir="$HOME/config/nixos-flake"
+
+    echo "=== nixos-flake evaluation log (level: $level) ==="
+    NIXOS_LOG="$level" nix eval --impure --expr "
+let
+  lib = (import <nixpkgs> {}).lib;
+  nixpkgs = import <nixpkgs> {};
+  inputs = { nixpkgs-stable = import <nixpkgs> {}; };
+  builder = import ${flake_dir}/shared/library/builder.nix {
+    inherit lib nixpkgs inputs;
+    home-manager = null;
+  };
+  result = builder.mkNixosConfig ${flake_dir}/hosts ${flake_dir}/users ${flake_dir}/desktop-env;
+in
+  builtins.map (x: x.name) result
+" 2>&1 | grep -E '^trace:' | sed 's/^trace: //' || echo "(no log output)"
+}
+
 config_update() {
     nix flake update --flake ~/config/nixos-flake/
     sudo nixos-rebuild switch --flake ~/config/nixos-flake/#"$*" --show-trace --upgrade
