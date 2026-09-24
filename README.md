@@ -118,7 +118,52 @@ Format Nix files with `alejandra --format <file>`; check shell scripts with `she
 
 ## Adding a user module
 
-Drop a `.nix` file into `users/<user>/modules/`. It is auto-imported by the builder — no registration needed.
+User modules are Home Manager modules loaded per user. The builder imports the user's `modules/` **directory**, which resolves to `modules/default.nix`; that file's `imports` list is what actually pulls each module in. So a new module must be both created **and** referenced in the right `default.nix`.
+
+The current structure:
+
+```
+users/<user>/modules/
+  default.nix            # imports the top-level modules below
+  general.nix
+  browser.nix
+  communication.nix
+  flatpak.nix
+  entertainment/         # subcategory — has its own default.nix
+    default.nix
+  productivity/          # subcategory — has its own default.nix
+    default.nix
+    git.nix
+    vscode/
+    ...
+```
+
+To add a module:
+
+1. **Create the file** in the appropriate place:
+   - Top-level concern → `users/<user>/modules/<name>.nix`
+   - Belongs under an existing category (e.g. `productivity/`) → `users/<user>/modules/<category>/<name>.nix`
+   - New category → create `users/<user>/modules/<category>/default.nix` and put modules inside it.
+
+2. **Reference it** in the `imports` list of the enclosing `default.nix`:
+   - Top-level file → add `./<name>.nix` to `users/<user>/modules/default.nix`
+   - File inside a category → add `./<name>.nix` to that category's `default.nix` (e.g. `users/<user>/modules/productivity/default.nix`)
+   - A new category directory → add `./<category>` to `users/<user>/modules/default.nix`
+
+3. **Write the module** as a Home Manager module:
+
+   ```nix
+   { pkgs, ... }:
+   {
+     home.packages = with pkgs; [
+       # ...
+     ];
+   }
+   ```
+
+4. Run `nix flake check`, then deploy with the `nixos-rebuild` command above.
+
+> A file that is created but not added to a `default.nix` `imports` list is silently ignored — the builder only follows the `default.nix` chain.
 
 ## License
 
