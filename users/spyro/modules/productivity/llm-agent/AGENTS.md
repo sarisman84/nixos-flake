@@ -82,3 +82,6 @@ These instructions apply to all projects. They define how I (the agent) should w
   - Inline code (single backticks): commands, file paths, options, flags, identifiers. E.g. `nix flake check`, `~/.config/opencode/AGENTS.md`, `pkgs`, `home.file.".config/opencode/opencode.json"`.
   - Fenced code blocks (triple backticks, with a language tag): multi-line code, scripts, config blocks, command sequences.
   - Never leave code-related text as plain prose.
+- **Size limit:** Keep each document small — target ~150 lines of text maximum. If a document would exceed the limit, split the content where it makes sense into a new document and reference it from the original (relative markdown link) instead of growing the original unboundedly.
+  - The original document keeps a brief summary + a link to the split-out document.
+  - Choose split points at natural topic boundaries (a section, a concern, a command group).
