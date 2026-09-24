@@ -8,6 +8,8 @@
       vlc
       filezilla
       postman
+      ncdu
+      dust
     ];
   };
 }
