@@ -34,8 +34,9 @@ These instructions apply to all projects. They define how I (the agent) should w
 - Use kebab-case for the description.
 
 ### Branching Workflow
-- **Create a branch before starting any feature implementation.** Do not work on `main` for features.
-- Small, isolated fixes may be made directly on `main` if they are trivial (single-line, no logic change) — otherwise branch.
+- **Always create a branch from the most up-to-date default branch before working on a task.** Update the default branch first (e.g. `git fetch && git checkout <default> && git pull --rebase`), then branch off it. Do not work on the default branch for features.
+- Small, isolated fixes may be made directly on the default branch if they are trivial (single-line, no logic change) — otherwise branch.
+- If unsure which branch is the default, check `git remote show origin` (look for "HEAD branch").
 
 ### Commit Granularity
 - Commit **granularly** — one logical change per commit — to make work traceable and easy to revert.
