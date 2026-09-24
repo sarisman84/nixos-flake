@@ -17,7 +17,10 @@ users/<user>/              # Home Manager user configs
     modules/               #   Home Manager modules auto-imported (general, bash, llm-agent, vscode, git, ...)
 desktop-env/               # Desktop environment modules (kde-plasma, niri)
 shared/library/            # Shared library
-  builder.nix              #   evaluates hosts → users → nixosSystem + home-manager
+  builder.nix              #   orchestrator: assembles nixosSystem per host
+  pkgs.nix                 #   mkPkgs: builds unstable + stable nixpkgs sets
+  hosts.nix                #   getHosts, getDesktopEnv, mkSharedImports
+  users.nix                #   getUsers, mkNixosUsers, mkHomeManagerUsers
   project-types.nix        #   option schemas (spyroFlake.hosts, spyroFlake.users)
   utilities.nix            #   getDirectoryNames, getNixFileNames
 shared/modules/            # Shared NixOS modules (e.g. nvidia.nix)
@@ -44,6 +47,17 @@ AGENTS.md                  # this file
 - Commits should be concise and use an appropriate prefix (e.g. `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`).
 - Always ask the user to validate your work before committing or pushing to the repo.
 - When the user asks you to create a pull request, query them about how to describe the changes made thus far in the current branch. Ensure that you list all of the additions, removals and overall changes made on the current working branch as well as all of the tests that you have done. Furthermore, ensure that the metadata is set appropriately, assigning the user as an owner of the PR as well as giving the correct label for said PR.
+- **Always update existing PRs** when new commits are pushed to the branch. Update the PR body to reflect all changes, tests, and validation steps.
+
+### PR Labels
+
+| Label | Description |
+|---|---|
+| `bug` | Something isn't working |
+| `fix` | Fixes a bug or deprecation |
+| `enhancement` | New feature or request |
+| `refactor` | Code restructuring without changing behavior |
+| `documentation` | Improvements or additions to documentation |
 
 ## Commands
 

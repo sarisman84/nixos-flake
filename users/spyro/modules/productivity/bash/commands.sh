@@ -142,12 +142,65 @@ check() {
 
 
 config_build() {
+    local host="$*"
+    local start
+
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  ⚙  Deploying ${host}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "  Evaluating flake & building system..."
+    start=$SECONDS
+
     sudo nixos-rebuild switch --flake ~/config/nixos-flake/#"$*" --show-trace
+    local status=$?
+
+    local elapsed=$((SECONDS - start))
+    echo ""
+
+    if [ $status -eq 0 ]; then
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "  ✔  ${host} deployed in ${elapsed}s"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    else
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "  ✘  Deploy failed (exit ${status})"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    fi
+
+    return $status
 }
 
 config_update() {
+    local host="$*"
+
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  ↻  Updating & deploying ${host}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "  Updating flake inputs..."
+
     nix flake update --flake ~/config/nixos-flake/
+    if [ $? -ne 0 ]; then
+        echo ""
+        echo "  ✘  Flake update failed"
+        return 1
+    fi
+
+    echo ""
+    echo "  Building & switching..."
+
     sudo nixos-rebuild switch --flake ~/config/nixos-flake/#"$*" --show-trace --upgrade
+    local status=$?
+
+    echo ""
+    if [ $status -eq 0 ]; then
+        echo "  ✔  ${host} updated & deployed"
+    else
+        echo "  ✘  Deploy failed (exit ${status})"
+    fi
+
+    return $status
 }
 
 config_edit() {
