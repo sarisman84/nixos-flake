@@ -18,6 +18,7 @@ Currently manages the `two-b` host (`x86_64-linux`, KDE Plasma) and the `spyro` 
   - [NixOS](#nixos)
   - [Nix (non-NixOS systems)](#nix-non-nixos-systems)
 - [Development](#development)
+- [Garbage collection](#garbage-collection)
 - [Adding a host](#adding-a-host)
 - [Adding a user module](#adding-a-user-module)
   - [System-specific (NixOS) modules](#system-specific-nixos-modules)
@@ -99,6 +100,47 @@ Verify your changes (fastest first):
 3. `sudo nixos-rebuild switch --flake .#two-b --show-trace` — actual deploy.
 
 Format Nix files with `alejandra --format <file>`; check shell scripts with `shellcheck <file>`.
+
+## Garbage collection
+
+Automatic Nix store garbage collection is a cross-cutting system concern, so it's implemented as a **shared NixOS module** (`shared/modules/garbage-collection.nix`) that the builder applies to every host, toggled per host via the `nixGC` option in `host.nix`.
+
+The `nixGC` value is declared in each host's `host.nix` (alongside `system`, `desktopEnv`, etc.) and threaded into the NixOS build as a **specialArg** by `shared/library/builder.nix` — the same mechanism used for `sharedImports`, `inputs`, and `pkgsStable`. When `enable = true`, the module sets:
+
+- `nix.gc.automatic = true` (and `persistent = true`) — installs the `nix-gc` systemd service + timer.
+- `nix.gc.dates` — the timer's cron schedule.
+- `nix.gc.options` — passed to `nix-collect-garbage`, set to `--delete-older-than <deleteOlderThan>`.
+- `nix.settings.auto-optimise-store = true` — dedupes store paths.
+
+To enable it on a host, add a `nixGC` block to its `host.nix`:
+
+```nix
+# hosts/two-b/host.nix
+{ ... }:
+{
+  spyroFlake.hosts.two-b = {
+    # ...
+    nixGC = {
+      enable = true;
+      dates = "weekly";            # timer schedule (any systemd cron expression)
+      deleteOlderThan = "300d";    # keep GC'd generations for ~10 months
+    };
+  };
+}
+```
+
+Options (schema in `shared/library/project-types.nix`):
+
+| Field | Type | Default | Meaning |
+|---|---|---|---|
+| `enable` | bool | `false` | Master switch for automatic GC on this host. |
+| `dates` | str | `"weekly"` | Cron schedule for the GC timer. |
+| `deleteOlderThan` | str | `"300d"` | Value for `nix-collect-garbage --delete-older-than`. |
+
+> [!NOTE]
+> Because the option defaults to `enable = false`, GC is **opt-in per host** — new hosts don't get it until they opt in. The `nixGC` option lives in `project-types.nix`'s `spyroFlake.hosts.<host>` submodule.
+>
+> The GC timer runs unattended, so `--delete-older-than` (not `--delete-older-than 300`) is the safe choice: it prunes only generations older than the window, leaving recent rollbacks available.
 
 ## Adding a host
 

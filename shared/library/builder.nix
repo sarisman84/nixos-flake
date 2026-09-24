@@ -44,6 +44,9 @@ in {
 
       hostConfig = hostDir + "/configuration.nix";
       generalSharedModules = sharedImportsDir + "/general.nix";
+      # Cross-cutting shared module; enabled/disabled per host via the
+      # `nixGC` specialArg below (see shared/modules/garbage-collection.nix).
+      gcModule = sharedImportsDir + "/garbage-collection.nix";
 
       userSystemModules = lib.flatten (
         lib.mapAttrsToList (_: user: user.system-modules) users
@@ -58,6 +61,10 @@ in {
           inherit sharedImports;
           inherit inputs;
           inherit pkgsStable;
+          # The host's GC config (from host.nix). Threaded as a specialArg
+          # rather than a config option because host.nix flags aren't part of
+          # the NixOS module set — consumed by gcModule.
+          nixGC = host.nixGC;
         };
 
         modules =
@@ -65,6 +72,7 @@ in {
             hostConfig
             desktopEnv
             generalSharedModules
+            gcModule
           ]
           ++ userSystemModules
           ++ [
