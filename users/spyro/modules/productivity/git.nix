@@ -30,14 +30,12 @@
         enable = false;
    };
 
-   programs.ssh = {
-        matchBlocks = {
-            "github.com" = {
-                identityFile = "/home/spyro/.ssh/id_ed25519";
-                addKeysToAgent = "yes";
-            };
+    programs.ssh = {
+        settings."github.com" = {
+            IdentityFile = "/home/spyro/.ssh/id_ed25519";
+            AddKeysToAgent = "yes";
         };
-   };
+    };
 
    systemd.user.sessionVariables = {
         SSH_AUTH_SOCK = "$XDG_RUNTIME_DIR/ssh-agent";
