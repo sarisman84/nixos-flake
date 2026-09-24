@@ -81,7 +81,8 @@ nix develop github:sarisman84/nixos-flake
 
 The devShell provides `nix`, `git`, `alejandra` (formatter), and `shellcheck`.
 
-> **Note:** The `nixosConfigurations` outputs are NixOS-specific and cannot be applied on a non-NixOS system. For pure Home Manager usage, use the [home-manager flake](https://github.com/nix-community/home-manager) pattern directly against `users/<user>/modules/`.
+> [!NOTE]
+> The `nixosConfigurations` outputs are NixOS-specific and cannot be applied on a non-NixOS system. For pure Home Manager usage, use the [home-manager flake](https://github.com/nix-community/home-manager) pattern directly against `users/<user>/modules/`.
 
 ## Development
 
@@ -164,6 +165,7 @@ To add a module:
 
 4. Run `nix flake check`, then deploy with the `nixos-rebuild` command above.
 
+> [!WARNING]
 > A file that is created but not added to a `default.nix` `imports` list is silently ignored — the builder only follows the `default.nix` chain.
 
 ### System-specific (NixOS) modules

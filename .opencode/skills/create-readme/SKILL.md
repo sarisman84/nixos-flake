@@ -143,7 +143,8 @@ nix develop github:<owner>/<repo>
 
 The devShell provides <list key packages>.
 
-> **Note:** <caveat about what doesn't work on non-NixOS>.
+> [!NOTE]
+> <caveat about what doesn't work on non-NixOS>.
 ```
 
 **Node.js:**
@@ -231,6 +232,17 @@ Adjust the license name and path to match the actual license file (`LICENSE`, `L
 - **Fenced code blocks** for all commands, with a language tag (`bash`, `nix`, `json`, etc.).
 - **Relative links** for in-repo references (`./LICENSE`, `./AGENTS.md`); absolute URLs for external links.
 - **Concise.** Each section should be scannable in < 10 seconds. No filler, no marketing language.
+- **Callouts for notes and warnings.** Use GitHub alert syntax, not bold `**Note:**`/`**Warning:**` blockquotes:
+
+  ````markdown
+  > [!NOTE]
+  > Informational caveat.
+
+  > [!WARNING]
+  > Something that will silently break if ignored.
+  ````
+
+  Other valid types: `[!TIP]`, `[!IMPORTANT]`, `[!CAUTION]`.
 - **Conventional Commit references** are not needed in the README.
 - **No emojis** in the README.
 - **Table of contents** only when there are 3+ major sections.
