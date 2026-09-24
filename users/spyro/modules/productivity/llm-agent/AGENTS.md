@@ -78,3 +78,7 @@ These instructions apply to all projects. They define how I (the agent) should w
 - **Where:** A dedicated `docs/` directory in the project the request was made in. Create it if it does not exist.
 - **AGENTS.md updates:** Automatically update the project's `AGENTS.md` when changes are made that affect how I work in that project (new conventions, new commands, structural changes, gotchas).
 - **Language:** Concise and technical. No filler, no verbose explanations. State facts, commands, and constraints directly.
+- **Code formatting:** Any code-related text — commands, file paths, option names, identifiers, and code snippets — must use appropriate markdown formatting.
+  - Inline code (single backticks): commands, file paths, options, flags, identifiers. E.g. `nix flake check`, `~/.config/opencode/AGENTS.md`, `pkgs`, `home.file.".config/opencode/opencode.json"`.
+  - Fenced code blocks (triple backticks, with a language tag): multi-line code, scripts, config blocks, command sequences.
+  - Never leave code-related text as plain prose.
