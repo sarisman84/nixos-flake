@@ -233,3 +233,11 @@ vc_repoLink() {
 vc_merge() {
     git merge "$1"
 }
+
+scan() {
+    ncdu "$@"
+}
+
+qscan() {
+    dust -d 3 "${@:-~}"
+}
