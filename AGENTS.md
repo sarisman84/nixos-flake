@@ -92,3 +92,4 @@ Packages available: `nix`, `git`, `alejandra`, `shellcheck`.
 - `env/*.env` files are gitignored (API keys for figma/stitch). Never commit or read secrets into flake output.
 - `sudo` is actually `run0` with `enableSudoAlias` and `wheelNeedsPassword = true` — deploy commands prompt for a password and won't run unattended.
 - `opencode.json` is managed via Home Manager; symlinked into `~/.config/opencode/opencode.json`.
+- `AGENTS.md` (the persistent agent instructions) is flake-managed: source is `users/spyro/modules/productivity/llm-agent/AGENTS.md`, deployed to `~/.config/opencode/AGENTS.md`. Edit the source in the flake, not the deployed copy. Note: `nix flake check` evaluates from a git-derived store path, so **untracked** files won't appear there — commit before checking.
