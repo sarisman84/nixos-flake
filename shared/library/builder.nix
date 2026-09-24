@@ -7,12 +7,19 @@
 }:
 let
   utilities = import ./utilities.nix { inherit lib; };
+
+  debug =
+    msg: value:
+    if (builtins.getEnv "NIXOS_DEBUG") != null && (builtins.getEnv "NIXOS_DEBUG") != ""
+    then builtins.trace msg value
+    else value;
+
   mkPkgs =
     host:
     let
-      system = builtins.traceVerbose (host.system) host.system;
+      system = host.system;
       permInsPkgs = host.permittedInsecurePackages;
-      
+
       pkgsConfig = {
         allowUnfree = true;
         cudaSupport = true;
@@ -29,11 +36,11 @@ let
         config = pkgsConfig;
       };
     };
+
   mkSharedImports =
     directory:
     let
-      dir = builtins.trace ("Directory: ${directory}") directory;
-      modules = utilities.getNixFileNames dir;
+      modules = utilities.getNixFileNames directory;
       result = builtins.listToAttrs (
         map (module: {
           name = lib.removeSuffix ".nix" module;
@@ -41,7 +48,7 @@ let
         }) modules
       );
     in
-    builtins.trace ("Imported modules: ${toString (lib.mapAttrsToList (name: value: "${directory}/${name}") result)}") result;
+    debug "Imported modules: ${toString (lib.mapAttrsToList (name: _: "${directory}/${name}") result)}" result;
 
   mkNixosUsers =
     userDir: users:
@@ -55,6 +62,7 @@ let
         };
       }) users
     );
+
   mkHomeManagerUsers =
     userDir: users:
     builtins.listToAttrs (
@@ -74,55 +82,61 @@ let
   getHosts =
     hostsDir: projectTypes:
     let
-      hostModules = map (
-        entry:
-        let
-          path = hostsDir + "/${entry}/host.nix";
-        in
-        builtins.trace ("HostModules Entry - Type: ${builtins.typeOf (path)} | Path:" + path) path
+      hostModules =
+        map
+        (
+          entry:
+          let
+            path = hostsDir + "/${entry}/host.nix";
+          in
+          debug "HostModules Entry - Type: ${builtins.typeOf path} | Path: ${path}" path
+        )
+        (utilities.getDirectoryNames hostsDir);
 
-      ) (utilities.getDirectoryNames hostsDir);
+      hostMods = debug ("HostModules loaded: " + builtins.typeOf hostModules + " - " + toString hostModules) hostModules;
 
-      hostMods = builtins.trace (
-        "HostModules loaded: " + builtins.typeOf hostModules + " - " + toString (hostModules)
-      ) hostModules;
-
-      evalHosts = builtins.trace "Evaluating host modules" lib.evalModules {
-        modules = [ projectTypes ] ++ hostMods;
-      };
+      evalHosts =
+        lib.evalModules {
+          modules = [ projectTypes ] ++ hostMods;
+        };
 
       config = evalHosts.config.spyroFlake;
     in
-    builtins.trace ("Hosts loaded: ${toString (lib.mapAttrsToList (name: value: name) config.hosts)}") config.hosts;
+    debug ("Hosts loaded: ${toString (lib.attrNames config.hosts)}") config.hosts;
 
   getUsers =
     usersDir: host: projectTypes:
     let
-      users = builtins.trace "Users for host: ${toString (host.users)}" host.users;
-      userModules = map (
-        entry:
-        let
-          path = usersDir + "/${entry}/user.nix";
-        in
-        builtins.trace ("UserModules Entry - Type: ${builtins.typeOf (path)} | Path:" + path) path
-      ) users;
+      users = debug "Users for host: ${toString host.users}" host.users;
+      userModules =
+        map
+        (
+          entry:
+          let
+            path = usersDir + "/${entry}/user.nix";
+          in
+          debug "UserModules Entry - Type: ${builtins.typeOf path} | Path: ${path}" path
+        )
+        users;
 
-      userMods = builtins.trace ("UserModules loaded: " + builtins.typeOf userModules) userModules;
-      evalUsers = builtins.trace "Evaluating user modules" lib.evalModules {
-        modules = [ projectTypes ] ++ userMods;
-      };
+      userMods = debug ("UserModules loaded: " + builtins.typeOf userModules) userModules;
+
+      evalUsers =
+        lib.evalModules {
+          modules = [ projectTypes ] ++ userMods;
+        };
 
       config = evalUsers.config.spyroFlake;
     in
-    builtins.trace ("Users loaded: ${toString (lib.mapAttrsToList (name: value: name) config.users)}") config.users;
-  
-  getDesktopEnv = 
+    debug ("Users loaded: ${toString (lib.attrNames config.users)}") config.users;
+
+  getDesktopEnv =
     desktopEnvDir: host:
-    let 
-      desktopEnv = builtins.trace "Host uses desktop enviroment: ${toString(host.desktopEnv)}" host.desktopEnv;
+    let
+      desktopEnv = debug "Host uses desktop environment: ${toString host.desktopEnv}" host.desktopEnv;
       path = "${desktopEnvDir}/${desktopEnv}/default.nix";
     in
-    builtins.trace ("Desktop enviroment selected: ${toString(path)}") path;
+    debug ("Desktop environment selected: ${path}") path;
 
 in
 {
@@ -132,12 +146,10 @@ in
       # Evaluate host machines
 
       projectTypes = ./project-types.nix;
-      pt = builtins.trace (
-        "Project types loaded: " + builtins.typeOf projectTypes + " - " + toString (projectTypes)
-      ) projectTypes;
+      pt = debug ("Project types loaded: " + builtins.typeOf projectTypes + " - " + toString projectTypes) projectTypes;
 
       hosts = getHosts hostsDir pt;
-      sharedImports = builtins.trace "Shared imports loaded" (mkSharedImports ./../modules);
+      sharedImports = debug "Shared imports loaded" (mkSharedImports ./../modules);
     in
     lib.mapAttrsToList (
       hostName: host:
@@ -145,7 +157,7 @@ in
         hostDir = hostsDir + "/${hostName}";
         users = getUsers usersDir host pt;
 
-        system = builtins.trace ("System to use: ${toString (host.system)}") host.system;
+        system = debug ("System to use: ${toString host.system}") host.system;
         allPkgs = mkPkgs host;
         pkgs = allPkgs.unstable;
         pkgsStable = allPkgs.stable;
@@ -153,34 +165,33 @@ in
         desktopEnv = getDesktopEnv desktopDir host;
 
         nixosUsers = mkNixosUsers usersDir users;
-        debugNixosUsers = builtins.trace ("Users: ${toString (lib.mapAttrsToList (name: value: name) nixosUsers)}") nixosUsers;
+        debugNixosUsers = debug ("Users: ${toString (lib.attrNames nixosUsers)}") nixosUsers;
 
         homeManagerUsers = mkHomeManagerUsers usersDir users;
-        debugHomeManagerUsers = builtins.trace ("Home Manager Users: ${toString (lib.mapAttrsToList (name: value: name) homeManagerUsers)}") homeManagerUsers;
+        debugHomeManagerUsers = debug ("Home Manager Users: ${toString (lib.attrNames homeManagerUsers)}") homeManagerUsers;
 
         generalSharedModules = ./../modules/general.nix;
-        debugGSM = builtins.trace ("General Shared Modules: ${toString generalSharedModules}") generalSharedModules;
+        debugGSM = debug ("General Shared Modules: ${toString generalSharedModules}") generalSharedModules;
 
         hostConfig = (hostDir + "/configuration.nix");
-        debugHC = builtins.trace ("Host Config: ${toString hostConfig}") hostConfig;
+        debugHC = debug ("Host Config: ${toString hostConfig}") hostConfig;
       in
       {
-        name = builtins.trace ("Host Machine: ${toString (hostName)}") hostName;
-         value = lib.nixosSystem {
-           inherit pkgs system;
-            specialArgs = {
-              inherit sharedImports;
-              inherit inputs;
-              inherit pkgsStable;
-            };
+        name = debug ("Host Machine: ${hostName}") hostName;
+        value = lib.nixosSystem {
+          inherit pkgs system;
+          specialArgs = {
+            inherit sharedImports;
+            inherit inputs;
+            inherit pkgsStable;
+          };
 
           modules = [
             debugHC
             desktopEnv
             debugGSM
-
           ]
-          ++ lib.flatten (lib.mapAttrsToList (usernames: user: user.system-modules) users)
+          ++ lib.flatten (lib.mapAttrsToList (_usernames: user: user.system-modules) users)
           ++ [
             {
               users.users = debugNixosUsers;
@@ -191,10 +202,10 @@ in
               home-manager.useGlobalPkgs = true;
               home-manager.useUserPackages = true;
               #home-manager.extraSpecialArgs.flake-inputs = inputs;
-               home-manager.extraSpecialArgs = {
-                 flake-inputs = inputs;
-                 inherit pkgsStable;
-               };
+              home-manager.extraSpecialArgs = {
+                flake-inputs = inputs;
+                inherit pkgsStable;
+              };
               home-manager.backupFileExtension = "backup";
 
               home-manager.users = debugHomeManagerUsers;
