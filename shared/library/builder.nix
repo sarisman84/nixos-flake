@@ -8,9 +8,6 @@
   utilities = import ./utilities.nix {
     inherit lib;
   };
-  logging = import ./logging.nix {
-    inherit lib;
-  };
   pkgsLib = import ./pkgs.nix {
     inherit lib nixpkgs inputs;
   };
@@ -29,30 +26,21 @@
   sharedImportsDir = ./../modules;
 in {
   mkNixosConfig = hostsDir: usersDir: desktopDir: let
-    hostResult = getHosts hostsDir projectTypes;
-    hosts = hostResult.value;
-
-    sharedResult = mkSharedImports sharedImportsDir;
-    sharedImports = sharedResult.value;
+    hosts = getHosts hostsDir projectTypes;
+    sharedImports = mkSharedImports sharedImportsDir;
 
     buildHost = hostName: host: let
       hostDir = hostsDir + "/${hostName}";
 
-      userResult = getUsers usersDir host projectTypes;
-      users = userResult.value;
+      users = getUsers usersDir host projectTypes;
+      nixosUsers = mkNixosUsers users;
+      homeManagerUsers = mkHomeManagerUsers usersDir users;
 
-      nixosUserResult = mkNixosUsers users;
-      nixosUsers = nixosUserResult.value;
+      allPkgs = mkPkgs host;
+      pkgs = allPkgs.unstable;
+      pkgsStable = allPkgs.stable;
 
-      hmUserResult = mkHomeManagerUsers usersDir users;
-      homeManagerUsers = hmUserResult.value;
-
-      pkgsResult = mkPkgs host;
-      pkgs = pkgsResult.value.unstable;
-      pkgsStable = pkgsResult.value.stable;
-
-      deResult = getDesktopEnv desktopDir host;
-      desktopEnv = deResult.value;
+      desktopEnv = getDesktopEnv desktopDir host;
 
       hostConfig = hostDir + "/configuration.nix";
       generalSharedModules = sharedImportsDir + "/general.nix";
@@ -60,20 +48,6 @@ in {
       userSystemModules = lib.flatten (
         lib.mapAttrsToList (_: user: user.system-modules) users
       );
-
-      # Collect all log entries for this host
-      hostLogs =
-        [
-          {
-            level = 1;
-            msg = "builder: building host '${hostName}' (system=${host.system})";
-          }
-        ]
-        ++ userResult.logs
-        ++ nixosUserResult.logs
-        ++ hmUserResult.logs
-        ++ pkgsResult.logs
-        ++ deResult.logs;
     in {
       name = hostName;
       value = lib.nixosSystem {
@@ -109,9 +83,6 @@ in {
               home-manager.backupFileExtension = "backup";
               home-manager.users = homeManagerUsers;
             }
-
-            # Print evaluation log at activation
-            (logging.toModule hostLogs)
           ];
       };
     };
