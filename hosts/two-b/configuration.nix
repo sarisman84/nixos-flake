@@ -35,7 +35,13 @@
       enable = true;
       enableSudoAlias = true;
       wheelNeedsPassword = true;
+      # Cache the admin password for the session instead of re-prompting on
+      # every sudo/run0 call. A command that shells out to sudo several times
+      # (e.g. `config build` + the generation-prune step) then only asks once.
+      # The credential stays valid for `polkit.settings.Polkitd.ExpirationSeconds`.
+      persistentAuth.enable = true;
     };
+    polkit.settings.Polkitd.ExpirationSeconds = 1800;
   };
 
   # Some programs need SUID wrappers, can be configured further or are
