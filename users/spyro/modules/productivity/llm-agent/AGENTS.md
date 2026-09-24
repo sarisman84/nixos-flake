@@ -51,7 +51,7 @@ These instructions apply to all projects. They define how I (the agent) should w
 ### Pull Request Conventions
 - Draft PRs using the template below. Fill in all sections; omit a section only if genuinely not applicable (state "N/A" rather than leaving it empty).
 - **Owner:** Always assign the user (the repository owner) as the PR owner when creating a PR.
-- **Labels:** Add an appropriate label (`feature`, `fix`, `chore`, `docs`, `refactor`).
+- **Labels:** Add an appropriate label from the repo's label set: `bug`, `fix`, `enhancement`, `refactor`, `documentation`.
 - **PR title:** Reflect the branch name — convert `prefix/description` to `Prefix - Detailed description`. Capitalize the prefix, use a human-readable detailed description of the work.
   - Example: branch `feature/foo-bar` → PR title `Feature - New Foo Bar Element added`.
   - Example: branch `fix/login-redirect` → PR title `Fix - Login redirect loop on OAuth callback`.
