@@ -55,6 +55,7 @@ These instructions apply to all projects. They define how I (the agent) should w
 - **PR title:** Reflect the branch name — convert `prefix/description` to `Prefix - Detailed description`. Capitalize the prefix, use a human-readable detailed description of the work.
   - Example: branch `feature/foo-bar` → PR title `Feature - New Foo Bar Element added`.
   - Example: branch `fix/login-redirect` → PR title `Fix - Login redirect loop on OAuth callback`.
+- **Always update existing PRs** when new commits are pushed to the branch. Update the PR body to reflect all changes, tests, and validation steps.
 
 #### PR Template
 ```markdown

@@ -47,6 +47,7 @@ AGENTS.md                  # this file
 - Commits should be concise and use an appropriate prefix (e.g. `feat:`, `fix:`, `chore:`, `refactor:`, `docs:`).
 - Always ask the user to validate your work before committing or pushing to the repo.
 - When the user asks you to create a pull request, query them about how to describe the changes made thus far in the current branch. Ensure that you list all of the additions, removals and overall changes made on the current working branch as well as all of the tests that you have done. Furthermore, ensure that the metadata is set appropriately, assigning the user as an owner of the PR as well as giving the correct label for said PR.
+- **Always update existing PRs** when new commits are pushed to the branch. Update the PR body to reflect all changes, tests, and validation steps.
 
 ### PR Labels
 
