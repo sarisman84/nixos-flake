@@ -3,7 +3,7 @@
 [![NixOS](https://img.shields.io/badge/NixOS-flake-6f79c1?style=for-the-badge&logo=nixos&logoColor=white)](https://nixos.org/)
 [![Home Manager](https://img.shields.io/badge/Home%20Manager-included-92845c?style=for-the-badge&logo=home-assistant&logoColor=white)](https://github.com/nix-community/home-manager)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](./LICENSE)
-[![GitHub last commit](https://img.shields.io/github/last-commit/spyro/nixos-flake?style=for-the-badge)](./)
+[![GitHub last commit](https://img.shields.io/github/last-commit/sarisman84/nixos-flake?style=for-the-badge)](./)
 [![NixOS channel](https://img.shields.io/badge/nixpkgs-nixos--unstable-4479c1?style=for-the-badge)](https://github.com/NixOS/nixpkgs/tree/nixos-unstable)
 
 A [Nix](https://nixos.org/) flake for declaratively managing one or more [NixOS](https://nixos.org/) hosts and the users on them. System configuration, Home Manager user configs, and desktop environments all live in a single, version-controlled flake — evaluated by a small shared library that turns a directory of host and user definitions into full `nixosSystem` builds.
@@ -55,7 +55,7 @@ Option schemas live in `shared/library/project-types.nix`; helpers in `shared/li
 This flake is a set of NixOS system configurations. Deploy a host with:
 
 ```bash
-sudo nixos-rebuild switch --flake github:spyro/nixos-flake#two-b --show-trace
+sudo nixos-rebuild switch --flake github:sarisman84/nixos-flake#two-b --show-trace
 ```
 
 or, from a local clone:
@@ -75,7 +75,7 @@ sudo nixos-rebuild switch --flake ~/config/nixos-flake/#two-b --upgrade --show-t
 On a non-NixOS system with [Nix](https://nixos.org/download) (multi-user or single-user) installed, you can still use the flake's devShell:
 
 ```bash
-nix develop github:spyro/nixos-flake
+nix develop github:sarisman84/nixos-flake
 ```
 
 The devShell provides `nix`, `git`, `alejandra` (formatter), and `shellcheck`.
