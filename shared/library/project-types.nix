@@ -34,6 +34,37 @@ in
               default = [ ];
               description = "List of insecure packages to allow installation of.";
             };
+
+            # Per-host automatic Nix GC. Read by builder.nix and threaded into
+            # shared/modules/garbage-collection.nix as the `nixGC` specialArg.
+            # Defaults to disabled — each host must opt in.
+            nixGC = mkOption {
+              type = types.submodule (
+                { ... }: {
+                  options = {
+                    enable = mkOption {
+                      type = types.bool;
+                      default = false;
+                      description = "Enable automatic Nix garbage collection for this host.";
+                    };
+
+                    dates = mkOption {
+                      type = types.str;
+                      default = "weekly";
+                      description = "Cron schedule for the automatic GC timer (e.g. \"weekly\", \"0 3 * * 1\").";
+                    };
+
+                    deleteOlderThan = mkOption {
+                      type = types.str;
+                      default = "300d";
+                      description = "Retention window: value for nix-collect-garbage --delete-older-than.";
+                    };
+                  };
+                }
+              );
+              default = { };
+              description = "Automatic Nix garbage-collection settings for this host (see shared/modules/garbage-collection.nix).";
+            };
           };
         }
       )

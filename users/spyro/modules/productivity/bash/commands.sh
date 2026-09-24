@@ -162,6 +162,9 @@ config_build() {
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "  ✔  ${host} deployed in ${elapsed}s"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        # Prune old system generations so repeated builds don't pile up.
+        # Only runs on success so a failed build never drops a good generation.
+        config_prune_generations
     else
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "  ✘  Deploy failed (exit ${status})"
@@ -169,6 +172,37 @@ config_build() {
     fi
 
     return $status
+}
+
+# Delete all but the newest N NixOS system generations.
+# N is read from $NIXOS_KEEP_GENERATIONS (default 3). No-op when there are
+# fewer than N+1 generations to prune.
+config_prune_generations() {
+    local keep="${NIXOS_KEEP_GENERATIONS:-3}"
+    local profile="/nix/var/nix/profiles/system"
+    local gens total
+    local -a toDelete=()
+
+    gens=$(sudo nix-env -p "$profile" --list-generations 2>/dev/null | awk '{print $1}')
+    total=$(echo "$gens" | grep -c .)
+
+    # Nothing to prune unless we have more than 'keep' generations.
+    [ "$total" -le "$keep" ] && return 0
+
+    # Oldest (total - keep) generation numbers, newest 'keep' preserved.
+    while IFS= read -r gen; do
+        toDelete+=("$gen")
+    done < <(echo "$gens" | sort -n | head -n -"$keep")
+
+    if [ "${#toDelete[@]}" -gt 0 ]; then
+        echo ""
+        echo "  🧹 Pruning system generations (keeping newest ${keep}): ${toDelete[*]}"
+        # --delete-generations removes the listed generations and automatically
+        # reclaims their store paths. Do NOT also run a full `nix-collect-garbage
+        # -d` here — that sweeps *every* unreferenced path (including the
+        # generations we want to keep), collapsing the profile to one build.
+        sudo nix-env -p "$profile" --delete-generations "${toDelete[@]}"
+    fi
 }
 
 config_update() {

@@ -23,16 +23,17 @@ shared/library/            # Shared library
   users.nix                #   getUsers, mkNixosUsers, mkHomeManagerUsers
   project-types.nix        #   option schemas (spyroFlake.hosts, spyroFlake.users)
   utilities.nix            #   getDirectoryNames, getNixFileNames
-shared/modules/            # Shared NixOS modules (e.g. nvidia.nix)
+shared/modules/            # Shared NixOS modules (nvidia.nix, general.nix, garbage-collection.nix)
 AGENTS.md                  # this file
 ```
 
 ## How it evaluates
 
 - `builder.nix` reads `hosts/*` → for each host, reads its `users/*` → builds a `lib.nixosSystem` + home-manager config.
-- Each `hosts/<host>/host.nix` declares `spyroFlake.hosts.<host>` with `{ system, users, desktopEnv, permittedInsecurePackages }` (schema in `project-types.nix`).
+- Each `hosts/<host>/host.nix` declares `spyroFlake.hosts.<host>` with `{ system, users, desktopEnv, permittedInsecurePackages, nixGC }` (schema in `project-types.nix`).
 - Each `users/<user>/user.nix` declares `spyroFlake.users.<user>` with `{ groups, home, pfp, system-modules }`.
-- SpecialArgs passed to modules: `pkgs` (unstable), `pkgsStable` (26.05), `sharedImports` (from `shared/modules/`), `inputs`.
+- SpecialArgs passed to modules: `pkgs` (unstable), `pkgsStable` (26.05), `sharedImports` (from `shared/modules/`), `inputs`, and `nixGC` (the host's GC config; consumed by `shared/modules/garbage-collection.nix`).
+- Per-host flags from `host.nix` are **not** visible as NixOS `config.*` options — they're extracted via `evalModules` in `hosts.nix`. To use one inside a NixOS module, thread it through `specialArgs` in `builder.nix` (as `nixGC` is).
 - Home Manager modules use `{ pkgs, lib, config, ... }`. NixOS modules use `{ pkgs, sharedImports, ... }`.
 
 ## Conventions

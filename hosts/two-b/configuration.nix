@@ -15,25 +15,6 @@
     ./fancontrol.nix
   ];
 
-  # Auto Update
-  # system.autoUpgrade = {
-  #   enable = true;
-  #   flake = "/home/flake.nix";
-  #   flags = [
-  #     "--print-build-logs"
-  #     "--commit-lock-file" # If you want to automatically commit the updated flake.lock
-  #   ];
-  #   dates = "02:00";
-  #   randomizedDelaySec = "45min";
-  # };
-  # # Garbage Collection
-  # nix.gc = {
-  #   automatic = true;
-  #   dates = "weekly";
-  #   options = "--delete-older-than 300";
-  # };
-  # nix.settings.auto-optimise-store = true;
-
   # Bootloader.
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
@@ -54,7 +35,13 @@
       enable = true;
       enableSudoAlias = true;
       wheelNeedsPassword = true;
+      # Cache the admin password for the session instead of re-prompting on
+      # every sudo/run0 call. A command that shells out to sudo several times
+      # (e.g. `config build` + the generation-prune step) then only asks once.
+      # The credential stays valid for `polkit.settings.Polkitd.ExpirationSeconds`.
+      persistentAuth.enable = true;
     };
+    polkit.settings.Polkitd.ExpirationSeconds = 1800;
   };
 
   # Some programs need SUID wrappers, can be configured further or are
