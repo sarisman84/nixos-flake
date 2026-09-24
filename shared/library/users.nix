@@ -1,12 +1,6 @@
-{
-  lib,
-  utilities,
-  logging,
-  ...
-}: let
-  inherit (logging) info debug;
-in {
-  # Build NixOS users.users entries from the evaluated user attrset.
+{lib, ...}: {
+  # Build NixOS users.users entries.
+  # Returns { value = <attrset>, logs = [ ] }.
   mkNixosUsers = users: let
     result = builtins.listToAttrs (
       lib.mapAttrsToList (username: user: {
@@ -19,10 +13,18 @@ in {
       })
       users
     );
-  in
-    info "users: NixOS users: ${toString (lib.attrNames result)}" result;
+  in {
+    value = result;
+    logs = [
+      {
+        level = 1;
+        msg = "users: NixOS users: ${toString (lib.attrNames result)}";
+      }
+    ];
+  };
 
-  # Build home-manager.users entries from the evaluated user attrset.
+  # Build home-manager.users entries.
+  # Returns { value = <attrset>, logs = [ ] }.
   mkHomeManagerUsers = userDir: users: let
     result = builtins.listToAttrs (
       lib.mapAttrsToList (username: user: {
@@ -38,30 +40,39 @@ in {
       })
       users
     );
-  in
-    info "users: Home Manager users: ${toString (lib.attrNames result)}" result;
+  in {
+    value = result;
+    logs = [
+      {
+        level = 1;
+        msg = "users: Home Manager users: ${toString (lib.attrNames result)}";
+      }
+    ];
+  };
 
   # Evaluate all user.nix files for a host via evalModules.
-  # Returns the spyroFlake.users attrset.
+  # Returns { value = spyroFlake.users, logs = [ ] }.
   getUsers = usersDir: host: projectTypes: let
     usernames = host.users;
     userModules =
-      map
-      (
-        entry: let
-          path = usersDir + "/${entry}/user.nix";
-        in
-          debug "users: loading ${path}" path
-      )
-      usernames;
-
-    userMods = debug "users: ${toString (lib.length userModules)} user module(s) collected" userModules;
+      map (entry: usersDir + "/${entry}/user.nix") usernames;
 
     evalUsers = lib.evalModules {
-      modules = [projectTypes] ++ userMods;
+      modules = [projectTypes] ++ userModules;
     };
 
     config = evalUsers.config.spyroFlake;
-  in
-    info "users: loaded users: ${toString (lib.attrNames config.users)}" config.users;
+  in {
+    value = config.users;
+    logs = [
+      {
+        level = 2;
+        msg = "users: ${toString (lib.length usernames)} user module(s) for host";
+      }
+      {
+        level = 1;
+        msg = "users: loaded users: ${toString (lib.attrNames config.users)}";
+      }
+    ];
+  };
 }

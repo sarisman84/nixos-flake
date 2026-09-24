@@ -5,60 +5,77 @@
   inputs,
   ...
 }: let
-  # --- Load sub-modules ---------------------------------------------------
-  utilities = import ./utilities.nix {inherit lib;};
-  logging = import ./logging.nix {inherit lib;};
-  pkgsLib = import ./pkgs.nix {inherit lib nixpkgs inputs logging;};
-  hostsLib = import ./hosts.nix {inherit lib utilities logging;};
-  usersLib = import ./users.nix {inherit lib utilities logging;};
+  utilities = import ./utilities.nix {
+    inherit lib;
+  };
+  logging = import ./logging.nix {
+    inherit lib;
+  };
+  pkgsLib = import ./pkgs.nix {
+    inherit lib nixpkgs inputs;
+  };
+  hostsLib = import ./hosts.nix {
+    inherit lib utilities;
+  };
+  usersLib = import ./users.nix {
+    inherit lib;
+  };
 
-  inherit (logging) info debug;
   inherit (pkgsLib) mkPkgs;
   inherit (hostsLib) mkSharedImports getHosts getDesktopEnv;
   inherit (usersLib) mkNixosUsers mkHomeManagerUsers getUsers;
 
-  # --- Shared constants ---------------------------------------------------
   projectTypes = ./project-types.nix;
   sharedImportsDir = ./../modules;
 in {
-  # Build a list of { name, value = nixosSystem } for every host.
-  #
-  # Called from flake.nix:
-  #   builtins.listToAttrs (configBuilder.mkNixosConfig hostsDir usersDir desktopDir)
   mkNixosConfig = hostsDir: usersDir: desktopDir: let
-    # Evaluate all host.nix files -> spyroFlake.hosts attrset
-    hosts = getHosts hostsDir projectTypes;
+    hostResult = getHosts hostsDir projectTypes;
+    hosts = hostResult.value;
 
-    # Import shared/modules/*.nix -> { general = <path>, nvidia = <path>, ... }
-    sharedImports = mkSharedImports sharedImportsDir;
+    sharedResult = mkSharedImports sharedImportsDir;
+    sharedImports = sharedResult.value;
 
-    # Per-host assembly
     buildHost = hostName: host: let
       hostDir = hostsDir + "/${hostName}";
 
-      # Users for this host
-      users = getUsers usersDir host projectTypes;
-      nixosUsers = mkNixosUsers users;
-      homeManagerUsers = mkHomeManagerUsers usersDir users;
+      userResult = getUsers usersDir host projectTypes;
+      users = userResult.value;
 
-      # Packages
-      allPkgs = mkPkgs host;
-      pkgs = allPkgs.unstable;
-      pkgsStable = allPkgs.stable;
+      nixosUserResult = mkNixosUsers users;
+      nixosUsers = nixosUserResult.value;
 
-      # Desktop environment
-      desktopEnv = getDesktopEnv desktopDir host;
+      hmUserResult = mkHomeManagerUsers usersDir users;
+      homeManagerUsers = hmUserResult.value;
 
-      # Host-specific paths
+      pkgsResult = mkPkgs host;
+      pkgs = pkgsResult.value.unstable;
+      pkgsStable = pkgsResult.value.stable;
+
+      deResult = getDesktopEnv desktopDir host;
+      desktopEnv = deResult.value;
+
       hostConfig = hostDir + "/configuration.nix";
       generalSharedModules = sharedImportsDir + "/general.nix";
 
-      # Collect per-user NixOS system modules
       userSystemModules = lib.flatten (
         lib.mapAttrsToList (_: user: user.system-modules) users
       );
+
+      # Collect all log entries for this host
+      hostLogs =
+        [
+          {
+            level = 1;
+            msg = "builder: building host '${hostName}' (system=${host.system})";
+          }
+        ]
+        ++ userResult.logs
+        ++ nixosUserResult.logs
+        ++ hmUserResult.logs
+        ++ pkgsResult.logs
+        ++ deResult.logs;
     in {
-      name = info "builder: building host '${hostName}' (system=${host.system})" hostName;
+      name = hostName;
       value = lib.nixosSystem {
         inherit pkgs;
         system = host.system;
@@ -71,21 +88,16 @@ in {
 
         modules =
           [
-            # Host configuration
             hostConfig
             desktopEnv
             generalSharedModules
-
-            # Per-user NixOS modules
           ]
           ++ userSystemModules
           ++ [
-            # NixOS user accounts
             {
               users.users = nixosUsers;
             }
 
-            # Home Manager
             home-manager.nixosModules.home-manager
             {
               home-manager.useGlobalPkgs = true;
@@ -97,10 +109,12 @@ in {
               home-manager.backupFileExtension = "backup";
               home-manager.users = homeManagerUsers;
             }
+
+            # Print evaluation log at activation
+            (logging.toModule hostLogs)
           ];
       };
     };
   in
-    debug "builder: building ${toString (lib.length hosts)} host(s)"
-    (lib.mapAttrsToList buildHost hosts);
+    lib.mapAttrsToList buildHost hosts;
 }

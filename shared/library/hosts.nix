@@ -1,12 +1,10 @@
 {
   lib,
   utilities,
-  logging,
   ...
-}: let
-  inherit (logging) info debug;
-in {
-  # Import all .nix files from a directory as an attrset keyed by filename (without .nix).
+}: {
+  # Import all .nix files from a directory as an attrset keyed by filename.
+  # Returns { value = <attrset>, logs = [ ] }.
   mkSharedImports = directory: let
     modules = utilities.getNixFileNames directory;
     result = builtins.listToAttrs (
@@ -16,38 +14,54 @@ in {
       })
       modules
     );
-  in
-    info "hosts: imported shared modules: ${toString (lib.attrNames result)}" result;
+  in {
+    value = result;
+    logs = [
+      {
+        level = 1;
+        msg = "hosts: imported shared modules: ${toString (lib.attrNames result)}";
+      }
+    ];
+  };
 
   # Evaluate all host.nix files under hostsDir via evalModules.
-  # Returns the spyroFlake.hosts attrset.
+  # Returns { value = spyroFlake.hosts, logs = [ ] }.
   getHosts = hostsDir: projectTypes: let
     hostEntries = utilities.getDirectoryNames hostsDir;
     hostModules =
-      map
-      (
-        entry: let
-          path = hostsDir + "/${entry}/host.nix";
-        in
-          debug "hosts: loading ${path}" path
-      )
-      hostEntries;
-
-    hostMods = debug "hosts: ${toString (lib.length hostModules)} host module(s) collected" hostModules;
+      map (entry: hostsDir + "/${entry}/host.nix") hostEntries;
 
     evalHosts = lib.evalModules {
-      modules = [projectTypes] ++ hostMods;
+      modules = [projectTypes] ++ hostModules;
     };
 
     config = evalHosts.config.spyroFlake;
-  in
-    info "hosts: loaded hosts: ${toString (lib.attrNames config.hosts)}" config.hosts;
+  in {
+    value = config.hosts;
+    logs = [
+      {
+        level = 2;
+        msg = "hosts: ${toString (lib.length hostEntries)} host module(s) found";
+      }
+      {
+        level = 1;
+        msg = "hosts: loaded hosts: ${toString (lib.attrNames config.hosts)}";
+      }
+    ];
+  };
 
   # Resolve the desktop environment path for a host.
-  # Returns the path to desktop-env/<name>/default.nix.
+  # Returns { value = <path>, logs = [ ] }.
   getDesktopEnv = desktopEnvDir: host: let
     desktopEnv = host.desktopEnv;
     path = "${desktopEnvDir}/${desktopEnv}/default.nix";
-  in
-    info "hosts: desktop env = ${desktopEnv} (path: ${path})" path;
+  in {
+    value = path;
+    logs = [
+      {
+        level = 1;
+        msg = "hosts: desktop env = ${desktopEnv}";
+      }
+    ];
+  };
 }

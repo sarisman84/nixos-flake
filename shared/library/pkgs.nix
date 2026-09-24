@@ -2,13 +2,10 @@
   lib,
   nixpkgs,
   inputs,
-  logging,
   ...
-}: let
-  inherit (logging) info debug;
-in {
+}: {
   # Build nixpkgs sets (unstable + stable) for a given host.
-  # Returns { unstable, stable } — each an evaluated nixpkgs set.
+  # Returns { value = { unstable, stable }, logs = [ ] }.
   mkPkgs = host: let
     system = host.system;
     permInsPkgs = host.permittedInsecurePackages;
@@ -31,12 +28,19 @@ in {
       inherit system;
       config = pkgsConfig;
     };
-  in
-    debug "pkgs: building nixpkgs sets for system=${system}"
-    (
-      info "pkgs: unstable = ${toString unstable.name or "unnamed"}, stable = ${toString stable.name or "unnamed"}"
+  in {
+    value = {
+      inherit unstable stable;
+    };
+    logs = [
       {
-        inherit unstable stable;
+        level = 2;
+        msg = "pkgs: building nixpkgs sets for system=${system}";
       }
-    );
+      {
+        level = 1;
+        msg = "pkgs: unstable=${unstable.name or "?"} stable=${stable.name or "?"}";
+      }
+    ];
+  };
 }
