@@ -20,6 +20,7 @@ Currently manages the `two-b` host (`x86_64-linux`, KDE Plasma) and the `spyro` 
 - [Development](#development)
 - [Adding a host](#adding-a-host)
 - [Adding a user module](#adding-a-user-module)
+  - [System-specific (NixOS) modules](#system-specific-nixos-modules)
 - [License](#license)
 
 ## Repository layout
@@ -164,6 +165,54 @@ To add a module:
 4. Run `nix flake check`, then deploy with the `nixos-rebuild` command above.
 
 > A file that is created but not added to a `default.nix` `imports` list is silently ignored — the builder only follows the `default.nix` chain.
+
+### System-specific (NixOS) modules
+
+The `modules/` directory above holds **Home Manager** modules (per-user, `home.*` options). If a user needs to affect the **system** itself — NixOS options like `services.*`, `environment.*`, `boot.*`, `hardware.*` — they add a **system module** under `users/<user>/system/`.
+
+These are wired in differently. `user.nix` declares them via `system-modules`, and the builder appends that list to the host's NixOS module set (`shared/library/builder.nix`):
+
+```nix
+# users/<user>/user.nix
+{ ... }:
+{
+  spyroFlake.users.<user> = {
+    groups = [ "wheel" "networkmanager" ];
+    system-modules = [ ./system ];   # a directory, resolved to its default.nix
+  };
+}
+```
+
+The `system/` tree mirrors the `modules/` layout (a `default.nix` whose `imports` pull in the actual modules, with optional subcategories):
+
+```
+users/<user>/system/
+  default.nix            # imports ./modules
+  modules/
+    default.nix          # imports the modules below
+    entertainment/
+      default.nix
+      rsi-launcher.nix
+```
+
+To add a system module:
+
+1. Create the file under `users/<user>/system/modules/` (top-level or in a subcategory, same rules as Home Manager modules).
+2. Reference it in the enclosing `system/modules/.../default.nix` `imports` list.
+3. Write it as a **NixOS** module (note the different options and special args):
+
+   ```nix
+   { pkgs, ... }:
+   {
+     services.example.enable = true;
+     environment.systemPackages = [ pkgs.example ];
+   }
+   ```
+
+4. Ensure `user.nix` lists the directory in `system-modules` (it already points at `./system`, so adding files inside it is enough; add a new entry only if you introduce a separate directory).
+5. Run `nix flake check`, then deploy.
+
+Because system modules are appended per host, the same user's system modules apply to every host that lists that user in `host.nix`'s `users`.
 
 ## License
 
