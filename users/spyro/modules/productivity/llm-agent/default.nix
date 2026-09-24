@@ -42,4 +42,5 @@ in
   ];
 
   home.file.".config/opencode/opencode.json".source = ./opencode.json;
+  home.file.".config/opencode/AGENTS.md".source = ./AGENTS.md;
 }
