@@ -60,7 +60,7 @@ These are defined in `users/spyro/modules/productivity/bash/commands.sh` (loaded
 | `check` | `git status` |
 | `commit -m "msg"` | `git add . && git commit -m` |
 | `push` / `pull --rebase` | Git push/pull |
-| `branch create|switch|list` | Branch shortcuts |
+| `branch create/switch/list` | Branch shortcuts |
 | `repo link <url>` | Add remote |
 
 **For non-interactive / automated use** (e.g. an agent shell), call the underlying command directly:
