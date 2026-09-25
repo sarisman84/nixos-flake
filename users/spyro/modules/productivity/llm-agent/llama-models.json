@@ -1,0 +1,6 @@
+{
+  "llama.cpp": {
+    "qwen3.8-27b": "unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M",
+    "bonsai-27b": "prism-ml/Ternary-Bonsai-2-27B-gguf"
+  }
+}

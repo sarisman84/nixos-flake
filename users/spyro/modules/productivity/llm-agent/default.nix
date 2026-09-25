@@ -5,6 +5,7 @@ let
   llamaPort = "8080";
   llamaHealthUrl = "http://${llamaHost}:${llamaPort}/health";
   envDir = "${config.home.homeDirectory}/config/nixos-flake/users/spyro/modules/productivity/llm-agent/env";
+  modelsJson = "${config.home.homeDirectory}/config/nixos-flake/users/spyro/modules/productivity/llm-agent/llama-models.json";
 
   wrapperScript = builtins.readFile ./opencode-wrapper.sh;
   opencodeWrapper = pkgs.writeShellScriptBin "opencode" (
@@ -18,6 +19,8 @@ let
         "__llama_model__"
         "__llama_host__"
         "__llama_port__"
+        "__llama_models_json__"
+        "__jq_bin__"
       ]
       [
         envDir
@@ -28,6 +31,8 @@ let
         llamaModel
         llamaHost
         llamaPort
+        modelsJson
+        "${pkgs.jq}/bin/jq"
       ]
       wrapperScript
    );

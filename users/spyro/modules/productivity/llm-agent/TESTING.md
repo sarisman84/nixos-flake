@@ -23,8 +23,9 @@ opencode --cloud opencode/<name>    # cloud model (skips llama-server)
 opencode [opencode args...]         # subcommands only (models, run, mcp, ...)
 ```
 
-- `--model` takes any `llama.cpp/<name>`; known ones (`qwen3.8-27b`,
-  `bonsai-27b`) map to specific HF repos, unknown ones fall back to default Qwen.
+- `--model` takes any `llama.cpp/<name>`; the name is looked up in
+  `llama-models.json` (the model registry) to find the HF repo to launch.
+  Unknown names fall back to default Qwen with a warning.
 - `--cloud` takes an `opencode/<name>` (OpenCode Zen) and skips the local server.
 - `--model` and `--cloud` are mutually exclusive.
 - A **bare `opencode`** (no flag, no subcommand) is rejected (exit 2).
@@ -111,11 +112,22 @@ Expected: `-jinja` and `--reasoning off` are present in the launched command.
 
 ---
 
-## Fix: Launch server with requested model (model mapping)
+## Fix: Launch server with requested model (model registry)
 
-The server now launches the correct HF repo for the requested `llama.cpp/<model>` and aliases it to the short opencode name.
+The server now launches the correct HF repo for the requested `llama.cpp/<model>` and aliases it to the short opencode name. The mapping lives in an external JSON file, `llama-models.json`, instead of a hardcoded case statement:
 
-Model map (for `--model` values):
+```json
+{
+  "llama.cpp": {
+    "qwen3.8-27b": "unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M",
+    "bonsai-27b": "prism-ml/Ternary-Bonsai-2-27B-gguf"
+  }
+}
+```
+
+To add a model, add a `"name": "<hf-repo>"` entry under `llama.cpp` in `llama-models.json` (and a matching entry under `provider.llama.cpp.models` in `opencode.json`). No wrapper or Nix changes needed.
+
+Model map (for `--model` values; resolved from `llama-models.json`):
 | You type | Server launches | Aliased as |
 |---|---|---|
 | `--model llama.cpp/qwen3.8-27b` | `unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M` | `qwen3.8-27b` |

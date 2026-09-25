@@ -14,6 +14,8 @@ curl_bin="__curl_bin__"
 llama_bin="__llama_bin__"
 opencode_bin="__opencode_bin__"
 llama_default_model="__llama_model__"
+llama_models_json="__llama_models_json__"
+jq_bin="__jq_bin__"
 log_file="/tmp/opencode-llama-server.log"
 server_pid=""
 
@@ -126,22 +128,21 @@ fi
 
 # Map the requested llama.cpp model to the HF repo to launch, and alias it
 # to the short opencode model name so the provider can route to it.
+# Model registry: "$llama_models_json" ({"llama.cpp": {"<name>": "<hf repo>"}})
 if [ $mode = "local" ]; then
-  case "${model_name#llama.cpp/}" in
-    qwen3.8-27b)
-      hf_model="unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M"
-      alias_name="qwen3.8-27b"
-      ;;
-    bonsai-27b)
-      hf_model="prism-ml/Ternary-Bonsai-2-27B-gguf"
-      alias_name="bonsai-27b"
-      ;;
-    *)
-      hf_model="unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M"
-      alias_name="${model_name#llama.cpp/}"
-      echo "Unknown llama.cpp model '$model_name'; falling back to default" >&2
-      ;;
-  esac
+  short_name="${model_name#llama.cpp/}"
+  alias_name="$short_name"
+
+  hf_model=""
+  if [ -f "$llama_models_json" ]; then
+    hf_model=$("$jq_bin" -r --arg name "$short_name" \
+      '.["llama.cpp"][$name] // empty' "$llama_models_json" 2>/dev/null) || hf_model=""
+  fi
+
+  if [ -z "$hf_model" ]; then
+    hf_model="$llama_default_model"
+    echo "Unknown llama.cpp model '$model_name' (not in $llama_models_json); falling back to default" >&2
+  fi
 else
   hf_model="$llama_default_model"
   alias_name="qwen3.8-27b"
