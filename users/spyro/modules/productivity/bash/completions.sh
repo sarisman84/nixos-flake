@@ -20,7 +20,7 @@ _config_subcommands() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
     if [ "$COMP_CWORD" -eq 1 ]; then
         local subcommands="build update clear"
-        read -r -a COMPREPLY < <(compgen -W "$subcommands" -- "$cur")
+        mapfile -t COMPREPLY < <(compgen -W "$subcommands" -- "$cur")
     elif [ "$COMP_CWORD" -eq 2 ]; then
         if [ "${COMP_WORDS[1]}" = "build" ] || [ "${COMP_WORDS[1]}" = "update" ]; then
             _config_hosts
@@ -36,7 +36,9 @@ complete -F _config_subcommands config
 _git_branches() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
     local -a branches=()
-    local b
+    local -a unique=()
+    local -A seen=()
+    local b key
     # Local branches
     while IFS= read -r b; do
         branches+=("$b")
@@ -48,23 +50,21 @@ _git_branches() {
         [ "$b" != "HEAD" ] && branches+=("$b")
     done < <(git branch -r --format='%(refname:short)' 2>/dev/null)
     # Deduplicate (preserve order, case-insensitive), then filter by prefix
-    local -A seen=()
-    local -a unique=()
     for b in "${branches[@]}"; do
-        local key="${b,,}"
+        key="${b,,}"
         if [ -z "${seen[$key]+x}" ]; then
             seen[$key]=1
             unique+=("$b")
         fi
     done
-    read -r -a COMPREPLY < <(compgen -W "${unique[*]}" -- "$cur")
+    mapfile -t COMPREPLY < <(compgen -W "${unique[*]}" -- "$cur")
 }
 
 _branch_subcommands() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
     if [ "$COMP_CWORD" -eq 1 ]; then
         local subcommands="create switch list merge"
-        read -r -a COMPREPLY < <(compgen -W "$subcommands" -- "$cur")
+        mapfile -t COMPREPLY < <(compgen -W "$subcommands" -- "$cur")
     elif [ "$COMP_CWORD" -eq 2 ]; then
         if [ "${COMP_WORDS[1]}" = "switch" ] || [ "${COMP_WORDS[1]}" = "merge" ]; then
             _git_branches
@@ -80,7 +80,7 @@ complete -F _branch_subcommands branch
 _repo_subcommands() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
     if [ "$COMP_CWORD" -eq 1 ]; then
-        read -r -a COMPREPLY < <(compgen -W "link" -- "$cur")
+        mapfile -t COMPREPLY < <(compgen -W "link" -- "$cur")
     fi
 }
 
@@ -90,7 +90,7 @@ complete -F _repo_subcommands repo
 
 _dir_completer() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
-    read -r -a COMPREPLY < <(compgen -d -- "$cur")
+    mapfile -t COMPREPLY < <(compgen -d -- "$cur")
 }
 
 complete -F _dir_completer scan
