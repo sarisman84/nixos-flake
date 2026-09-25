@@ -30,23 +30,37 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+list_models() {
+  local section="$1"
+  echo "Available $section models (from $models_json):"
+  if [ -f "$models_json" ]; then
+    "$jq_bin" -r --arg section "$section" \
+      '.[$section] // {} | keys[]' "$models_json" 2>/dev/null | while IFS= read -r name; do
+        echo "  $name"
+      done
+  else
+    echo "  (registry not found)"
+  fi
+}
+
 usage() {
   cat >&2 <<'EOF'
 Usage:
-  opencode --model llama.cpp/<name> [opencode args...]
-  opencode --cloud opencode/<name> [opencode args...]
+  opencode --model <name> [opencode args...]
+  opencode --cloud <name> [opencode args...]
   opencode [opencode args...]
 
-  --model <name>   use a local llama.cpp model (name may be any llama.cpp/<model>)
-  --cloud <name>   use an OpenCode Zen cloud model (name must be opencode/<model>);
-                   skips the local llama-server
+  --model <name>   use a local llama.cpp model; <name> is the key under
+                   "llama.cpp" in models.json
+  --cloud <name>   use a cloud model; <name> is the key under "opencode"
+                   in models.json; skips the local llama-server
   (no model flag)  allowed for subcommands such as `models`, `run`, `mcp`;
                    a bare `opencode` is rejected
 
 Examples:
-  opencode --model llama.cpp/qwen3.8-27b
-  opencode --model llama.cpp/bonsai-27b run "hello"
-  opencode --cloud opencode/muse-spark-1.3-contributor-free
+  opencode --model qwen3.8-27b
+  opencode --model bonsai-27b run "hello"
+  opencode --cloud big-pickle
   opencode models
   opencode run "hello"
 EOF
@@ -67,7 +81,7 @@ while [ $i -le $n ]; do
         exit 2
       fi
       if [ $((i + 1)) -gt $n ]; then
-        echo "Error: --model requires a value (e.g. llama.cpp/qwen3.8-27b)." >&2
+        echo "Error: --model requires a value (a model name from models.json)." >&2
         usage
         exit 2
       fi
@@ -83,7 +97,7 @@ while [ $i -le $n ]; do
         exit 2
       fi
       if [ $((i + 1)) -gt $n ]; then
-        echo "Error: --cloud requires a value (e.g. opencode/big-pickle)." >&2
+        echo "Error: --cloud requires a value (a model name from models.json)." >&2
         usage
         exit 2
       fi
@@ -106,27 +120,23 @@ if [ $mode = "none" ] && [ ${#opencode_args[@]} -eq 0 ]; then
   exit 2
 fi
 
-# Validate the chosen mode.
+# Validate the chosen mode: the model must be registered in models.json.
 if [ $mode = "cloud" ]; then
-  if [[ "$model_name" != opencode/* ]]; then
-    echo "Error: --cloud requires a cloud model (opencode/<name>), got '$model_name'." >&2
-    usage
-    exit 2
-  fi
-
-  # The cloud model must be registered in the models.json registry.
-  cloud_short="${model_name#opencode/}"
-  if [ -f "$models_json" ] && ! "$jq_bin" -e --arg name "$cloud_short" \
+  if [ ! -f "$models_json" ] || ! "$jq_bin" -e --arg name "$model_name" \
       '.opencode | has($name)' "$models_json" >/dev/null 2>&1; then
     echo "Error: unknown cloud model '$model_name' (not in $models_json)." >&2
+    list_models opencode >&2
     exit 2
   fi
+  model_name="opencode/$model_name"
 elif [ $mode = "local" ]; then
-  if [[ "$model_name" != llama.cpp/* ]]; then
-    echo "Error: --model requires a local model (llama.cpp/<name>), got '$model_name'." >&2
-    usage
+  if [ ! -f "$models_json" ] || ! "$jq_bin" -e --arg name "$model_name" \
+      '.["llama.cpp"] | has($name)' "$models_json" >/dev/null 2>&1; then
+    echo "Error: unknown local model '$model_name' (not in $models_json)." >&2
+    list_models llama.cpp >&2
     exit 2
   fi
+  model_name="llama.cpp/$model_name"
 fi
 
 # Build the final opencode invocation: --model <name> followed by the rest.
