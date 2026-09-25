@@ -7,7 +7,9 @@
   programs.bash = {
     enable = true;
     initExtra =
-      builtins.readFile ./commands.sh + "\n" +
+      builtins.readFile ./config.sh + "\n" +
+      builtins.readFile ./git-commands.sh + "\n" +
+      builtins.readFile ./system-tools.sh + "\n" +
       builtins.readFile ./completions.sh;
     shellAliases = {
       dnCount = "ls **/default.nix | wc -l";
