@@ -13,7 +13,8 @@ fi
 curl_bin="__curl_bin__"
 llama_bin="__llama_bin__"
 opencode_bin="__opencode_bin__"
-llama_default_model="__llama_model__"
+models_json="__models_json__"
+jq_bin="__jq_bin__"
 log_file="/tmp/opencode-llama-server.log"
 server_pid=""
 
@@ -28,23 +29,39 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
+list_models() {
+  local section="$1"
+  echo "Available $section models (from $models_json):"
+  if [ -f "$models_json" ]; then
+    "$jq_bin" -r --arg section "$section" \
+      '.[$section] // {} | keys[]' "$models_json" 2>/dev/null | while IFS= read -r name; do
+        echo "  $name"
+      done
+  else
+    echo "  (registry not found)"
+  fi
+}
+
 usage() {
   cat >&2 <<'EOF'
 Usage:
-  opencode --model llama.cpp/<name> [opencode args...]
-  opencode --cloud opencode/<name> [opencode args...]
+  opencode --model <name> [opencode args...]
+  opencode --cloud <name> [opencode args...]
   opencode [opencode args...]
 
-  --model <name>   use a local llama.cpp model (name may be any llama.cpp/<model>)
-  --cloud <name>   use an OpenCode Zen cloud model (name must be opencode/<model>);
-                   skips the local llama-server
-  (no model flag)  allowed for subcommands such as `models`, `run`, `mcp`;
-                   a bare `opencode` is rejected
+  --model <name>   use a local llama.cpp model; <name> is the key under
+                   "llama.cpp" in models.json
+  --cloud <name>   use a cloud model; <name> is the key under "opencode"
+                   in models.json; skips the local llama-server
+  (no model flag)  use the default model set in models.json ("default" key:
+                   {"provider", "name"}); a bare `opencode` launches an
+                   interactive session with that default
 
 Examples:
-  opencode --model llama.cpp/qwen3.8-27b
-  opencode --model llama.cpp/bonsai-27b run "hello"
-  opencode --cloud opencode/muse-spark-1.3-contributor-free
+  opencode                        # default model from models.json
+  opencode --model qwen3.8-27b
+  opencode --model bonsai-27b run "hello"
+  opencode --cloud big-pickle
   opencode models
   opencode run "hello"
 EOF
@@ -65,7 +82,7 @@ while [ $i -le $n ]; do
         exit 2
       fi
       if [ $((i + 1)) -gt $n ]; then
-        echo "Error: --model requires a value (e.g. llama.cpp/qwen3.8-27b)." >&2
+        echo "Error: --model requires a value (a model name from models.json)." >&2
         usage
         exit 2
       fi
@@ -81,7 +98,7 @@ while [ $i -le $n ]; do
         exit 2
       fi
       if [ $((i + 1)) -gt $n ]; then
-        echo "Error: --cloud requires a value (e.g. opencode/big-pickle)." >&2
+        echo "Error: --cloud requires a value (a model name from models.json)." >&2
         usage
         exit 2
       fi
@@ -97,26 +114,55 @@ while [ $i -le $n ]; do
   esac
 done
 
-# Enforce: a bare `opencode` (no model flag and no subcommand) is rejected.
+# A bare `opencode` (no model flag, no subcommand) uses the default model
+# from models.json. Subcommands (models, run, mcp, ...) pass through as-is.
 if [ $mode = "none" ] && [ ${#opencode_args[@]} -eq 0 ]; then
-  echo "Error: select a model with --model (local) or --cloud (cloud)." >&2
-  usage
-  exit 2
+  if [ ! -f "$models_json" ]; then
+    echo "Error: cannot resolve default model ($models_json not found)." >&2
+    exit 2
+  fi
+
+  def_provider=$("$jq_bin" -r '.default.provider // empty' "$models_json" 2>/dev/null)
+  def_name=$("$jq_bin" -r '.default.name // empty' "$models_json" 2>/dev/null)
+
+  if [ -z "$def_provider" ] || [ -z "$def_name" ]; then
+    echo "Error: default model not set in $models_json (need \"default\": {\"provider\", \"name\"})." >&2
+    exit 2
+  fi
+
+  case "$def_provider" in
+    llama.cpp)
+      mode="local"
+      model_name="$def_name"
+      ;;
+    opencode)
+      mode="cloud"
+      model_name="$def_name"
+      ;;
+    *)
+      echo "Error: unknown default provider '$def_provider' in $models_json (expected llama.cpp or opencode)." >&2
+      exit 2
+      ;;
+  esac
 fi
 
-# Validate the chosen mode.
+# Validate the chosen mode: the model must be registered in models.json.
 if [ $mode = "cloud" ]; then
-  if [[ "$model_name" != opencode/* ]]; then
-    echo "Error: --cloud requires a cloud model (opencode/<name>), got '$model_name'." >&2
-    usage
+  if [ ! -f "$models_json" ] || ! "$jq_bin" -e --arg name "$model_name" \
+      '.opencode | has($name)' "$models_json" >/dev/null 2>&1; then
+    echo "Error: unknown cloud model '$model_name' (not in $models_json)." >&2
+    list_models opencode >&2
     exit 2
   fi
+  model_name="opencode/$model_name"
 elif [ $mode = "local" ]; then
-  if [[ "$model_name" != llama.cpp/* ]]; then
-    echo "Error: --model requires a local model (llama.cpp/<name>), got '$model_name'." >&2
-    usage
+  if [ ! -f "$models_json" ] || ! "$jq_bin" -e --arg name "$model_name" \
+      '.["llama.cpp"] | has($name)' "$models_json" >/dev/null 2>&1; then
+    echo "Error: unknown local model '$model_name' (not in $models_json)." >&2
+    list_models llama.cpp >&2
     exit 2
   fi
+  model_name="llama.cpp/$model_name"
 fi
 
 # Build the final opencode invocation: --model <name> followed by the rest.
@@ -126,30 +172,16 @@ fi
 
 # Map the requested llama.cpp model to the HF repo to launch, and alias it
 # to the short opencode model name so the provider can route to it.
+# Model registry: "$models_json" ({"<provider>": {"<name>": "<target>"}})
 if [ $mode = "local" ]; then
-  case "${model_name#llama.cpp/}" in
-    qwen3.8-27b)
-      hf_model="unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M"
-      alias_name="qwen3.8-27b"
-      ;;
-    bonsai-27b)
-      hf_model="prism-ml/Ternary-Bonsai-2-27B-gguf"
-      alias_name="bonsai-27b"
-      ;;
-    *)
-      hf_model="unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M"
-      alias_name="${model_name#llama.cpp/}"
-      echo "Unknown llama.cpp model '$model_name'; falling back to default" >&2
-      ;;
-  esac
-else
-  hf_model="$llama_default_model"
-  alias_name="qwen3.8-27b"
+  short_name="${model_name#llama.cpp/}"
+  alias_name="$short_name"
+
+  hf_model=$("$jq_bin" -r --arg name "$short_name" \
+    '.["llama.cpp"][$name] // empty' "$models_json" 2>/dev/null) || hf_model=""
 fi
 
-if [ $mode = "cloud" ]; then
-  echo "Cloud mode: skipping llama-server"
-elif ! "$curl_bin" --fail --silent --show-error "__llama_health_url__" >/dev/null 2>&1; then
+if [ $mode = "local" ] && ! "$curl_bin" --fail --silent --show-error "__llama_health_url__" >/dev/null 2>&1; then
   echo "Starting llama-server for $hf_model"
   "$llama_bin" -hf "$hf_model" -a "$alias_name" --host "__llama_host__" --port "__llama_port__" \
     --jinja \

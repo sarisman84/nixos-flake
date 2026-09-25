@@ -70,6 +70,7 @@
             pkgs.git
             pkgs.alejandra
             pkgs.shellcheck
+            pkgs.jq
           ];
           shellHook = ''
             echo "nixos-flake devShell — see AGENTS.md for layout, commands, and the check/build/deploy workflow."

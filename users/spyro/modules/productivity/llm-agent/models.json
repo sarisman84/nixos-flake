@@ -1,0 +1,14 @@
+{
+  "default": {
+    "provider": "llama.cpp",
+    "name": "qwen3.8-27b"
+  },
+  "llama.cpp": {
+    "qwen3.8-27b": "unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M",
+    "bonsai-27b": "prism-ml/Ternary-Bonsai-2-27B-gguf"
+  },
+  "opencode": {
+    "muse-spark-1.3-contributor-free": "muse-spark-1.3-contributor-free",
+    "big-pickle": "big-pickle"
+  }
+}
