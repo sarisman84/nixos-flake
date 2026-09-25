@@ -13,7 +13,6 @@ fi
 curl_bin="__curl_bin__"
 llama_bin="__llama_bin__"
 opencode_bin="__opencode_bin__"
-llama_default_model="__llama_model__"
 models_json="__models_json__"
 jq_bin="__jq_bin__"
 log_file="/tmp/opencode-llama-server.log"
@@ -54,10 +53,12 @@ Usage:
                    "llama.cpp" in models.json
   --cloud <name>   use a cloud model; <name> is the key under "opencode"
                    in models.json; skips the local llama-server
-  (no model flag)  allowed for subcommands such as `models`, `run`, `mcp`;
-                   a bare `opencode` is rejected
+  (no model flag)  use the default model set in models.json ("default" key:
+                   {"provider", "name"}); a bare `opencode` launches an
+                   interactive session with that default
 
 Examples:
+  opencode                        # default model from models.json
   opencode --model qwen3.8-27b
   opencode --model bonsai-27b run "hello"
   opencode --cloud big-pickle
@@ -113,11 +114,36 @@ while [ $i -le $n ]; do
   esac
 done
 
-# Enforce: a bare `opencode` (no model flag and no subcommand) is rejected.
+# A bare `opencode` (no model flag, no subcommand) uses the default model
+# from models.json. Subcommands (models, run, mcp, ...) pass through as-is.
 if [ $mode = "none" ] && [ ${#opencode_args[@]} -eq 0 ]; then
-  echo "Error: select a model with --model (local) or --cloud (cloud)." >&2
-  usage
-  exit 2
+  if [ ! -f "$models_json" ]; then
+    echo "Error: cannot resolve default model ($models_json not found)." >&2
+    exit 2
+  fi
+
+  def_provider=$("$jq_bin" -r '.default.provider // empty' "$models_json" 2>/dev/null)
+  def_name=$("$jq_bin" -r '.default.name // empty' "$models_json" 2>/dev/null)
+
+  if [ -z "$def_provider" ] || [ -z "$def_name" ]; then
+    echo "Error: default model not set in $models_json (need \"default\": {\"provider\", \"name\"})." >&2
+    exit 2
+  fi
+
+  case "$def_provider" in
+    llama.cpp)
+      mode="local"
+      model_name="$def_name"
+      ;;
+    opencode)
+      mode="cloud"
+      model_name="$def_name"
+      ;;
+    *)
+      echo "Error: unknown default provider '$def_provider' in $models_json (expected llama.cpp or opencode)." >&2
+      exit 2
+      ;;
+  esac
 fi
 
 # Validate the chosen mode: the model must be registered in models.json.
@@ -151,16 +177,8 @@ if [ $mode = "local" ]; then
   short_name="${model_name#llama.cpp/}"
   alias_name="$short_name"
 
-  hf_model=""
-  if [ -f "$models_json" ]; then
-    hf_model=$("$jq_bin" -r --arg name "$short_name" \
-      '.["llama.cpp"][$name] // empty' "$models_json" 2>/dev/null) || hf_model=""
-  fi
-
-  if [ -z "$hf_model" ]; then
-    hf_model="$llama_default_model"
-    echo "Unknown llama.cpp model '$model_name' (not in $models_json); falling back to default" >&2
-  fi
+  hf_model=$("$jq_bin" -r --arg name "$short_name" \
+    '.["llama.cpp"][$name] // empty' "$models_json" 2>/dev/null) || hf_model=""
 fi
 
 if [ $mode = "local" ] && ! "$curl_bin" --fail --silent --show-error "__llama_health_url__" >/dev/null 2>&1; then

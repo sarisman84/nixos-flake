@@ -22,7 +22,8 @@ provider prefix (`llama.cpp/`, `opencode/`) is re-attached internally.
 ```bash
 opencode --model <name>    # local model (starts llama-server)
 opencode --cloud <name>    # cloud model (skips llama-server)
-opencode [opencode args...]  # subcommands only (models, run, mcp, ...)
+opencode                   # default model from models.json (interactive)
+opencode [opencode args...]  # subcommands (models, run, mcp, ...)
 ```
 
 - `--model` takes a name that must be a key under `llama.cpp` in
@@ -31,12 +32,18 @@ opencode [opencode args...]  # subcommands only (models, run, mcp, ...)
 - `--cloud` takes a name that must be a key under `opencode` in
   `models.json`; unknown names are rejected and the available models are listed.
 - `--model` and `--cloud` are mutually exclusive.
-- A **bare `opencode`** (no flag, no subcommand) is rejected (exit 2).
+- A **bare `opencode`** (no model flag) uses the **default model** set in
+  `models.json` under the `default` key: `{"provider", "name"}` where provider
+  is `llama.cpp` or `opencode`. The name must be registered under that provider.
+  Currently set to local `qwen3.8-27b`.
 - Subcommands without a model flag (`models`, `mcp`, …) are allowed and do
   **not** start the llama-server.
 
 Test commands:
 ```bash
+# Default model (bare opencode; interactive session)
+opencode
+
 # Local models (must use --model)
 opencode --model qwen3.8-27b
 opencode --model bonsai-27b
@@ -53,7 +60,6 @@ opencode models
 opencode run "hello"
 
 # Rejected (should print usage/available models, exit 2):
-opencode                                  # bare, no mode
 opencode qwen3.8-27b                      # positional model, no --model
 opencode --model not-a-real-model         # local model not in models.json
 opencode --cloud not-a-real-model         # cloud model not in models.json
@@ -119,6 +125,10 @@ The server launches the correct HF repo for the requested model and aliases it t
 
 ```json
 {
+  "default": {
+    "provider": "llama.cpp",
+    "name": "qwen3.8-27b"
+  },
   "llama.cpp": {
     "qwen3.8-27b": "unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M",
     "bonsai-27b": "prism-ml/Ternary-Bonsai-2-27B-gguf"
@@ -130,11 +140,17 @@ The server launches the correct HF repo for the requested model and aliases it t
 }
 ```
 
-To add a model, add a `"name": "<target>"` entry under the right provider key in `models.json` (for llama.cpp, also add a matching entry under `provider.llama.cpp.models` in `opencode.json`). No wrapper or Nix changes needed.
+- `default` — the model a **bare `opencode`** uses. `provider` is `llama.cpp`
+  or `opencode`; `name` must be a registered key under that provider.
+- To add a model, add a `"name": "<target>"` entry under the right provider key
+  (for llama.cpp, also add a matching entry under `provider.llama.cpp.models` in
+  `opencode.json`). No wrapper or Nix changes needed.
+- To change the default, edit the `default` object (no rebuild required).
 
 Model map (resolved from `models.json`; the prefix is re-attached internally):
 | You type | Routed as | Server launches |
 |---|---|---|
+| *(bare `opencode`)* | default from `models.json` | per default (local: started, cloud: skipped) |
 | `--model qwen3.8-27b` | `llama.cpp/qwen3.8-27b` | `unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M` |
 | `--model bonsai-27b` | `llama.cpp/bonsai-27b` | `prism-ml/Ternary-Bonsai-2-27B-gguf` |
 | `--model <unknown>` | — | rejected; available models listed |
@@ -166,7 +182,7 @@ opencode --model bonsai-27b run "Describe yourself briefly"
 | `opencode --cloud big-pickle` | OK | skipped | cloud |
 | `opencode run "hi"` | OK | not started | subcommand, no server |
 | `opencode models` | OK | not started | subcommand, no server |
-| `opencode` | **REJECTED** (exit 2) | — | bare, no mode |
+| `opencode` | OK | started (Qwen) | bare → default model (`qwen3.8-27b`, local) |
 | `opencode qwen3.8-27b` | **REJECTED** (exit 2) | — | positional model, needs `--model` |
 | `opencode big-pickle` | **REJECTED** (exit 2) | — | positional cloud, needs `--cloud` |
 | `opencode --cloud qwen3.8-27b` | **REJECTED** (exit 2) | — | local-only name passed to `--cloud` |

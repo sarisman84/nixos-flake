@@ -1,6 +1,5 @@
 { config, pkgs, lib, ... }:
 let
-  llamaModel = "unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M";
   llamaHost = "127.0.0.1";
   llamaPort = "8080";
   llamaHealthUrl = "http://${llamaHost}:${llamaPort}/health";
@@ -16,7 +15,6 @@ let
         "__llama_bin__"
         "__opencode_bin__"
         "__llama_health_url__"
-        "__llama_model__"
         "__llama_host__"
         "__llama_port__"
         "__models_json__"
@@ -28,7 +26,6 @@ let
         "${pkgs.llama-cpp}/bin/llama-server"
         "${pkgs.opencode}/bin/opencode"
         llamaHealthUrl
-        llamaModel
         llamaHost
         llamaPort
         modelsJson
