@@ -18,12 +18,15 @@ _config_hosts() {
 
 _config_subcommands() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
-    local subcommands="build update clear"
     if [ "$COMP_CWORD" -eq 1 ]; then
+        local subcommands="build update clear"
         read -r -a COMPREPLY < <(compgen -W "$subcommands" -- "$cur")
-    elif [ "${COMP_WORDS[1]}" = "build" ] || [ "${COMP_WORDS[1]}" = "update" ]; then
-        _config_hosts
+    elif [ "$COMP_CWORD" -eq 2 ]; then
+        if [ "${COMP_WORDS[1]}" = "build" ] || [ "${COMP_WORDS[1]}" = "update" ]; then
+            _config_hosts
+        fi
     fi
+    # No completions beyond position 2
 }
 
 complete -F _config_subcommands config
@@ -59,12 +62,15 @@ _git_branches() {
 
 _branch_subcommands() {
     local cur="${COMP_WORDS[COMP_CWORD]}"
-    local subcommands="create switch list merge"
     if [ "$COMP_CWORD" -eq 1 ]; then
+        local subcommands="create switch list merge"
         read -r -a COMPREPLY < <(compgen -W "$subcommands" -- "$cur")
-    elif [ "${COMP_WORDS[1]}" = "switch" ] || [ "${COMP_WORDS[1]}" = "merge" ]; then
-        _git_branches
+    elif [ "$COMP_CWORD" -eq 2 ]; then
+        if [ "${COMP_WORDS[1]}" = "switch" ] || [ "${COMP_WORDS[1]}" = "merge" ]; then
+            _git_branches
+        fi
     fi
+    # No completions beyond position 2
 }
 
 complete -F _branch_subcommands branch
