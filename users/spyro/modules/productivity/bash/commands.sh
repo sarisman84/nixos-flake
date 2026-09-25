@@ -4,13 +4,13 @@ config(){
 
     case "$cmd" in
         build)
-            config_build "$@"
+            _config_build "$@"
             ;;
         update)
-            config_update "$@"
+            _config_update "$@"
             ;;
         clear)
-            config_clear "$@"
+            _config_clear "$@"
             ;;
         -h | --help)
             echo "Usage: config {build|update|*} [args...]"
@@ -18,7 +18,7 @@ config(){
             ;;
 
         *)
-            config_edit "$@"
+            _config_edit "$@"
             ;;
     esac
 }
@@ -29,16 +29,16 @@ branch() {
 
     case "$cmd" in
        create)
-            vc_create "$@"
+            _vc_create "$@"
             ;;
         switch)
-            vc_switch "$@"
+            _vc_switch "$@"
             ;;
         list)
-            vc_list "$@"
+            _vc_list "$@"
             ;;
         merge)
-            vc_merge "$@"
+            _vc_merge "$@"
             ;;
         * | -h | --help)
             echo "Shortcuts for Git CLI branch commands."
@@ -55,7 +55,7 @@ repo() {
 
     case "$cmd" in
         link)
-            vc_repoLink "$@"
+            _vc_repoLink "$@"
             ;;
     * | -h | --help)
         echo "Shortcuts for Git CLI repository commands."
@@ -141,7 +141,7 @@ check() {
 
 
 
-config_build() {
+_config_build() {
     local host="$*"
     local start
 
@@ -164,7 +164,7 @@ config_build() {
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         # Prune old system generations so repeated builds don't pile up.
         # Only runs on success so a failed build never drops a good generation.
-        config_prune_generations
+        _config_prune_generations
     else
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "  ✘  Deploy failed (exit ${status})"
@@ -177,7 +177,7 @@ config_build() {
 # Delete all but the newest N NixOS system generations.
 # N is read from $NIXOS_KEEP_GENERATIONS (default 3). No-op when there are
 # fewer than N+1 generations to prune.
-config_prune_generations() {
+_config_prune_generations() {
     local keep="${NIXOS_KEEP_GENERATIONS:-3}"
     local profile="/nix/var/nix/profiles/system"
     local gens total
@@ -205,7 +205,7 @@ config_prune_generations() {
     fi
 }
 
-config_update() {
+_config_update() {
     local host="$*"
 
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -237,34 +237,34 @@ config_update() {
     return $status
 }
 
-config_edit() {
+_config_edit() {
     code ~/config/nixos-flake
 }
 
-config_clear() {
+_config_clear() {
     sudo nix-collect-garbage -d
     sudo /run/current-system/bin/switch-to-configuration boot
 }
 
 
-vc_create() {
+_vc_create() {
     git switch -c "$*"
     git push --set-upstream origin "$*"
 }
 
-vc_list() {
+_vc_list() {
     git branch;
 }
 
-vc_switch() {
+_vc_switch() {
     git switch "$*"
 }
 
-vc_repoLink() {
+_vc_repoLink() {
     git remote add origin "$*"
 }
 
-vc_merge() {
+_vc_merge() {
     git merge "$1"
 }
 
