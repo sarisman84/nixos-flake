@@ -34,6 +34,7 @@ complete -F _config_subcommands config
 # ── branch {create|switch|list|merge} ────────────────────────────────────
 
 _git_branches() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
     local -a branches=()
     local b
     # Local branches
@@ -44,7 +45,7 @@ _git_branches() {
     while IFS= read -r b; do
         [ -n "$b" ] && branches+=("$b")
     done < <(git ls-remote --heads origin 2>/dev/null | awk '{print $2}' | sed 's|refs/heads/||')
-    # Deduplicate (preserve order, case-insensitive)
+    # Deduplicate (preserve order, case-insensitive), then filter by prefix
     local -A seen=()
     local -a unique=()
     for b in "${branches[@]}"; do
@@ -54,7 +55,7 @@ _git_branches() {
             unique+=("$b")
         fi
     done
-    COMPREPLY=( "${unique[@]}" )
+    read -r -a COMPREPLY < <(compgen -W "${unique[*]}" -- "$cur")
 }
 
 _branch_subcommands() {
