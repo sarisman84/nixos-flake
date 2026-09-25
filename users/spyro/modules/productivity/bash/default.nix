@@ -6,10 +6,9 @@
 
   programs.bash = {
     enable = true;
-    initExtra = ''
-      $(builtins.readFile ./commands.sh)
-      $(builtins.readFile ./completions.sh)
-    '';
+    initExtra =
+      builtins.readFile ./commands.sh + "\n" +
+      builtins.readFile ./completions.sh;
     shellAliases = {
       dnCount = "ls **/default.nix | wc -l";
       dnlCount = "cat **/default.nix | wc -l";
