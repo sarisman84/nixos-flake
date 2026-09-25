@@ -32,8 +32,8 @@ opencode [opencode args...]  # subcommands only (models, run, mcp, ...)
   `models.json`; unknown names are rejected and the available models are listed.
 - `--model` and `--cloud` are mutually exclusive.
 - A **bare `opencode`** (no flag, no subcommand) is rejected (exit 2).
-- Subcommands without a model flag (`models`, `run`, `mcp`, …) are allowed and
-  use the default local model.
+- Subcommands without a model flag (`models`, `mcp`, …) are allowed and do
+  **not** start the llama-server.
 
 Test commands:
 ```bash
@@ -48,9 +48,9 @@ opencode --cloud big-pickle
 opencode --model qwen3.8-27b run "Say hello in 5 words"
 opencode --cloud big-pickle run "Say hi"
 
-# Subcommands (no model flag; default local)
-opencode run "hello"
+# Subcommands (no model flag; no local server started)
 opencode models
+opencode run "hello"
 
 # Rejected (should print usage/available models, exit 2):
 opencode                                  # bare, no mode
@@ -82,7 +82,7 @@ opencode big-pickle run "hi" --cloud
 # Regression: local model still starts the server
 opencode --model qwen3.8-27b
 
-# Regression: subcommands untouched
+# Regression: subcommands untouched (no server started)
 opencode run "hello"
 opencode models
 ```
@@ -138,7 +138,7 @@ Model map (resolved from `models.json`; the prefix is re-attached internally):
 | `--model qwen3.8-27b` | `llama.cpp/qwen3.8-27b` | `unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M` |
 | `--model bonsai-27b` | `llama.cpp/bonsai-27b` | `prism-ml/Ternary-Bonsai-2-27B-gguf` |
 | `--model <unknown>` | — | rejected; available models listed |
-| *(no `--model`; subcommand)* | — | `unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M` |
+| *(no model flag; subcommand)* | — | no server started |
 | `--cloud <zen>` | `opencode/<zen>` | *(skipped — cloud)* |
 
 Test commands:
@@ -164,8 +164,8 @@ opencode --model bonsai-27b run "Describe yourself briefly"
 | `opencode --model bonsai-27b` | OK | started (Bonsai) | local |
 | `opencode --model custom` | **REJECTED** (exit 2) | — | local name not in `models.json`; list printed |
 | `opencode --cloud big-pickle` | OK | skipped | cloud |
-| `opencode run "hi"` | OK | started (Qwen) | subcommand, default local |
-| `opencode models` | OK | started (Qwen) | subcommand, default local |
+| `opencode run "hi"` | OK | not started | subcommand, no server |
+| `opencode models` | OK | not started | subcommand, no server |
 | `opencode` | **REJECTED** (exit 2) | — | bare, no mode |
 | `opencode qwen3.8-27b` | **REJECTED** (exit 2) | — | positional model, needs `--model` |
 | `opencode big-pickle` | **REJECTED** (exit 2) | — | positional cloud, needs `--cloud` |

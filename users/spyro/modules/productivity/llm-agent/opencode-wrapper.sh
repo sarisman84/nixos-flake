@@ -161,14 +161,9 @@ if [ $mode = "local" ]; then
     hf_model="$llama_default_model"
     echo "Unknown llama.cpp model '$model_name' (not in $models_json); falling back to default" >&2
   fi
-else
-  hf_model="$llama_default_model"
-  alias_name="qwen3.8-27b"
 fi
 
-if [ $mode = "cloud" ]; then
-  echo "Cloud mode: skipping llama-server"
-elif ! "$curl_bin" --fail --silent --show-error "__llama_health_url__" >/dev/null 2>&1; then
+if [ $mode = "local" ] && ! "$curl_bin" --fail --silent --show-error "__llama_health_url__" >/dev/null 2>&1; then
   echo "Starting llama-server for $hf_model"
   "$llama_bin" -hf "$hf_model" -a "$alias_name" --host "__llama_host__" --port "__llama_port__" \
     --jinja \
