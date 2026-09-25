@@ -41,10 +41,12 @@ _git_branches() {
     while IFS= read -r b; do
         branches+=("$b")
     done < <(git branch --format='%(refname:short)' 2>/dev/null)
-    # Remote branches (query server directly — always up to date)
+    # Remote branches (cached — fast, no network call)
     while IFS= read -r b; do
-        [ -n "$b" ] && branches+=("$b")
-    done < <(git ls-remote --heads origin 2>/dev/null | awk '{print $2}' | sed 's|refs/heads/||')
+        [[ "$b" != */* ]] && continue
+        b="${b#origin/}"
+        [ "$b" != "HEAD" ] && branches+=("$b")
+    done < <(git branch -r --format='%(refname:short)' 2>/dev/null)
     # Deduplicate (preserve order, case-insensitive), then filter by prefix
     local -A seen=()
     local -a unique=()

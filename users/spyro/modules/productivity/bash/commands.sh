@@ -42,7 +42,8 @@ branch() {
             ;;
         * | -h | --help)
             echo "Shortcuts for Git CLI branch commands."
-            echo "Usage: branch {create|switch|list} [args..]"
+            echo "Usage: branch {create|switch|list|merge} [args..]"
+            echo "  branch list --remote   fetch and list remote branches"
             return 1
         ;;
     esac
@@ -253,7 +254,12 @@ _vc_create() {
 }
 
 _vc_list() {
-    git branch;
+    if [ "$1" = "--remote" ]; then
+        git fetch origin --prune 2>/dev/null
+        git branch -r --format='%(refname:short)' | grep -v 'HEAD$' | sed 's|^origin/||' | sort -u
+    else
+        git branch
+    fi
 }
 
 _vc_switch() {
