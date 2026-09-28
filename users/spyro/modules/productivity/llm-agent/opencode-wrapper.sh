@@ -11,23 +11,16 @@ if [ -d "$env_dir" ]; then
 fi
 
 curl_bin="__curl_bin__"
-llama_bin="__llama_bin__"
+swap_bin="__llama_swap_bin__"
+swap_config="__swap_config__"
 opencode_bin="__opencode_bin__"
 models_json="__models_json__"
 jq_bin="__jq_bin__"
-log_file="/tmp/opencode-llama-server.log"
-server_pid=""
+log_file="/tmp/opencode-llama-swap.log"
 
-cleanup() {
-  if [ -n "$server_pid" ]; then
-    kill "$server_pid" 2>/dev/null || true
-    wait "$server_pid" 2>/dev/null || true
-  fi
-}
-
-trap cleanup EXIT
-trap 'exit 130' INT
-trap 'exit 143' TERM
+# NOTE: the swap backend is shared and long-lived (idle TTL eviction drops
+# VRAM to zero on its own), so a backend started here is deliberately left
+# running on exit — there is nothing to clean up.
 
 list_models() {
   local section="$1"
@@ -49,18 +42,19 @@ Usage:
   opencode --cloud <name> [opencode args...]
   opencode [opencode args...]
 
-  --model <name>   use a local llama.cpp model; <name> is the key under
-                   "llama.cpp" in models.json
+  --model <name>   use a local model; <name> is the key under "llama.cpp"
+                   in models.json. The swap backend is ensured (started if
+                   missing); the picked model loads on demand.
   --cloud <name>   use a cloud model; <name> is the key under "opencode"
-                   in models.json; skips the local llama-server
+                   in models.json; no local backend is touched.
   (no model flag)  use the default model set in models.json ("default" key:
                    {"provider", "name"}); a bare `opencode` launches an
                    interactive session with that default
 
 Examples:
   opencode                        # default model from models.json
-  opencode --model qwen3.8-27b
-  opencode --model bonsai-27b run "hello"
+  opencode --model qwen3-8b
+  opencode --model qwen3.8-27b run "hello"
   opencode --cloud big-pickle
   opencode models
   opencode run "hello"
@@ -147,6 +141,8 @@ if [ $mode = "none" ] && [ ${#opencode_args[@]} -eq 0 ]; then
 fi
 
 # Validate the chosen mode: the model must be registered in models.json.
+# Registry entries are objects ({displayName, hfRef, options}); only the
+# keys matter here — the swap backend owns the model-to-command mapping.
 if [ $mode = "cloud" ]; then
   if [ ! -f "$models_json" ] || ! "$jq_bin" -e --arg name "$model_name" \
       '.opencode | has($name)' "$models_json" >/dev/null 2>&1; then
@@ -170,31 +166,21 @@ if [ $mode != "none" ]; then
   opencode_args=(--model "$model_name" "${opencode_args[@]}")
 fi
 
-# Map the requested llama.cpp model to the HF repo to launch, and alias it
-# to the short opencode model name so the provider can route to it.
-# Model registry: "$models_json" ({"<provider>": {"<name>": "<target>"}})
-if [ $mode = "local" ]; then
-  short_name="${model_name#llama.cpp/}"
-  alias_name="$short_name"
-
-  hf_model=$("$jq_bin" -r --arg name "$short_name" \
-    '.["llama.cpp"][$name] // empty' "$models_json" 2>/dev/null) || hf_model=""
-fi
-
+# Local mode needs the shared swap backend. If it is already healthy,
+# nothing happens; otherwise it is started (and left running — see NOTE).
 if [ $mode = "local" ] && ! "$curl_bin" --fail --silent --show-error "__llama_health_url__" >/dev/null 2>&1; then
-  echo "Starting llama-server for $hf_model"
-  "$llama_bin" -hf "$hf_model" -a "$alias_name" --host "__llama_host__" --port "__llama_port__" \
-    --jinja \
+  echo "Starting llama-swap (models load on demand)"
+  "$swap_bin" -config "$swap_config" -listen "__llama_host__:__llama_port__" \
     >"$log_file" 2>&1 &
-  server_pid=$!
+  swap_pid=$!
 
   for _ in $(seq 1 180); do
     if "$curl_bin" --fail --silent "__llama_health_url__" >/dev/null 2>&1; then
       break
     fi
 
-    if ! kill -0 "$server_pid" 2>/dev/null; then
-      echo "llama-server exited during startup" >&2
+    if ! kill -0 "$swap_pid" 2>/dev/null; then
+      echo "llama-swap exited during startup" >&2
       tail -n 50 "$log_file" >&2 || true
       break
     fi
@@ -203,7 +189,7 @@ if [ $mode = "local" ] && ! "$curl_bin" --fail --silent --show-error "__llama_he
   done
 
   if ! "$curl_bin" --fail --silent "__llama_health_url__" >/dev/null 2>&1; then
-    echo "llama-server is not healthy; falling back to plain opencode" >&2
+    echo "llama-swap is not healthy; falling back to plain opencode" >&2
     tail -n 50 "$log_file" >&2 || true
   fi
 fi
