@@ -4,6 +4,20 @@
 
 A NixOS + Home Manager flake managing one host (`two-b`, `x86_64-linux`) and one user (`spyro`). Outputs NixOS system configurations and a shared devShell.
 
+## Agent skills
+
+### Issue tracker
+
+Issues and specs live in GitHub Issues (via the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
 ## Repo layout
 
 ```
