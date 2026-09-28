@@ -9,6 +9,7 @@
       "hfRef": "unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M",
       "options": {
         "ctxSize": 131072,
+        "outputLimit": 16384,
         "gpuLayers": -1,
         "cacheTypeK": "q4_0",
         "cacheTypeV": "q4_0",
@@ -25,6 +26,7 @@
       "hfRef": "unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M",
       "options": {
         "ctxSize": 200000,
+        "outputLimit": 16384,
         "gpuLayers": -1,
         "cacheTypeK": "q8_0",
         "cacheTypeV": "q8_0",
@@ -41,6 +43,7 @@
       "hfRef": "unsloth/Qwen3-8B-GGUF:UD-Q4_K_XL",
       "options": {
         "ctxSize": 32768,
+        "outputLimit": 8192,
         "gpuLayers": -1,
         "cacheTypeK": "q4_0",
         "cacheTypeV": "q4_0",
