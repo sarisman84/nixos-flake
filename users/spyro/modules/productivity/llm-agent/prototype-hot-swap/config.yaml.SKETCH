@@ -1,0 +1,23 @@
+# PROTOTYPE SKETCH — throwaway, not production. Answers: "how does opencode
+# --model/--cloud/bare-default behave once llama-swap owns the server?"
+# Branch: prototype/hot-swap-ux. See README.SKETCH.md for what to react to.
+#
+# This is what the Nix options would GENERATE (not hand-edit) from the model
+# entries. Numbers are the resolved resource-policy decisions (provisional
+# pending soak): ctxSize 32768, cache-type-k q8_0, ttl 120, full offload
+# (no --n-gpu-layers flag), checkEndpoint /health.
+#
+# Wiring facts (from the swap survey): config key IS the model ID and must
+# equal the opencode.json provider model key; ${PORT} is auto-assigned
+# (never hardcode); proxy :8080 stays up across client restarts.
+
+healthCheckTimeout: 300
+models:
+  "qwen3.8-27b":
+    cmd: llama-server --port ${PORT} -hf unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M --jinja --ctx-size 32768 --cache-type-k q8_0
+    checkEndpoint: /health
+    ttl: 120
+  "bonsai-27b":
+    cmd: llama-server --port ${PORT} -hf prism-ml/Ternary-Bonsai-2-27B-gguf --jinja --ctx-size 32768 --cache-type-k q8_0
+    checkEndpoint: /health
+    ttl: 120

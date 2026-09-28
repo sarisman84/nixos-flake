@@ -1,0 +1,20 @@
+# PROTOTYPE SKETCH — throwaway, not production.
+# systemd user unit shape for the persistent proxy. Generated Unit + Install
+# section by Nix; ExecStart path + config path filled in at build time.
+# -watch-config lets `nixos-rebuild switch` pick up model changes without a
+# manual restart. Idle-zero comes from per-model `ttl: 120` in the config,
+# NOT from stopping this unit: the proxy itself is megabytes, the upstream
+# llama-server children are what must reach zero residents when idle.
+
+[Unit]
+Description=llama-swap local model proxy (opencode backend)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=llama-swap -config %h/.config/llama-swap/config.yaml -listen 127.0.0.1:8080 -watch-config
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
