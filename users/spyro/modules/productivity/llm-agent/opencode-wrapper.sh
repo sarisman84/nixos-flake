@@ -185,7 +185,6 @@ if [ $mode = "local" ] && ! "$curl_bin" --fail --silent --show-error "__llama_he
   echo "Starting llama-server for $hf_model"
   "$llama_bin" -hf "$hf_model" -a "$alias_name" --host "__llama_host__" --port "__llama_port__" \
     --jinja \
-    --reasoning off \
     >"$log_file" 2>&1 &
   server_pid=$!
 
