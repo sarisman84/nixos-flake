@@ -20,39 +20,44 @@ Both take a **bare model name** — the key in `models.json` — and the
 provider prefix (`llama.cpp/`, `opencode/`) is re-attached internally.
 
 ```bash
-opencode --model <name>    # local model (starts llama-server)
-opencode --cloud <name>    # cloud model (skips llama-server)
+opencode --model <name>    # local model (ensures swap backend)
+opencode --cloud <name>    # cloud model (skips backend)
 opencode                   # default model from models.json (interactive)
 opencode [opencode args...]  # subcommands (models, run, mcp, ...)
 ```
 
 - `--model` takes a name that must be a key under `llama.cpp` in
-  `models.json`; the wrapper looks up its HF repo to launch.
-  Unknown names are rejected and the available models are listed.
+  `models.json`; the swap backend is ensured (started if missing) and the
+  picked model loads on demand. Unknown names are rejected and the available
+  models are listed.
 - `--cloud` takes a name that must be a key under `opencode` in
   `models.json`; unknown names are rejected and the available models are listed.
 - `--model` and `--cloud` are mutually exclusive.
 - A **bare `opencode`** (no model flag) uses the **default model** set in
   `models.json` under the `default` key: `{"provider", "name"}` where provider
   is `llama.cpp` or `opencode`. The name must be registered under that provider.
-  Currently set to local `qwen3.8-27b`.
+  Currently set to local `qwen3-8b` (efficient, escalation via picker).
 - Subcommands without a model flag (`models`, `mcp`, …) are allowed and do
-  **not** start the llama-server.
+  **not** touch the backend.
+- Bare invocations *with* args (e.g. `opencode run "hi"`) also bypass the
+  wrapper's default resolution and backend ensure — they rely on the generated
+  `opencode.json` default model and an already-running backend.
 
 Test commands:
 ```bash
 # Default model (bare opencode; interactive session)
 opencode
 
-# Local models (must use --model)
+# Local models (must use --model; backend ensured, model loads on demand)
+opencode --model qwen3-8b
 opencode --model qwen3.8-27b
-opencode --model bonsai-27b
+opencode --model qwen3.8-27b-200k
 
 # Cloud model (must use --cloud)
 opencode --cloud big-pickle
 
 # Model + one-shot prompt
-opencode --model qwen3.8-27b run "Say hello in 5 words"
+opencode --model qwen3-8b run "Say hello in 5 words"
 opencode --cloud big-pickle run "Say hi"
 
 # Subcommands (no model flag; no local server started)

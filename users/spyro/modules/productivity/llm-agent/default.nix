@@ -358,7 +358,8 @@
     [
       "__env_dir__"
       "__curl_bin__"
-      "__llama_bin__"
+      "__llama_swap_bin__"
+      "__swap_config__"
       "__opencode_bin__"
       "__llama_health_url__"
       "__llama_host__"
@@ -369,7 +370,8 @@
     [
       envDir
       "${pkgs.curl}/bin/curl"
-      "${pkgs.llama-cpp}/bin/llama-server"
+      "${pkgs.llama-swap}/bin/llama-swap"
+      "${config.home.homeDirectory}/.config/llama-swap/config.yaml"
       "${pkgs.opencode}/bin/opencode"
       llamaHealthUrl
       llamaHost
