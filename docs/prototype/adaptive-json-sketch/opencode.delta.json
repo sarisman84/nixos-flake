@@ -1,0 +1,25 @@
+{
+  "_note": "PROTOTYPE sketch for wayfinder ticket #32 — fragments to merge into opencode.json (v1 keys; do NOT mix v2 provider/modelID keys). Wire IDs must equal llama-swap model IDs.",
+  "model": "llama.cpp/qwen3.8-27b",
+  "small_model": "llama.cpp/qwen3-8b",
+  "provider": {
+    "llama.cpp": {
+      "models": {
+        "qwen3.8-27b": {
+          "name": "Qwen3.8 27B reasoning (local, 131k)",
+          "limit": {
+            "context": 131072,
+            "output": 16384
+          }
+        },
+        "qwen3-8b": {
+          "name": "Qwen3 8B efficient (local, 32k)",
+          "limit": {
+            "context": 32768,
+            "output": 8192
+          }
+        }
+      }
+    }
+  }
+}

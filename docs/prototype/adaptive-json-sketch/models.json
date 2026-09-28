@@ -1,0 +1,45 @@
+{
+  "_note": "PROTOTYPE sketch for wayfinder ticket #32 — not production. Locked schema from #31: displayName + hfRef required, everything else under optional options.",
+  "default": {
+    "provider": "llama.cpp",
+    "name": "qwen3.8-27b"
+  },
+  "llama.cpp": {
+    "qwen3.8-27b": {
+      "displayName": "Qwen3.8 27B reasoning",
+      "hfRef": "unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M",
+      "options": {
+        "ctxSize": 131072,
+        "gpuLayers": -1,
+        "cacheTypeK": "q4_0",
+        "cacheTypeV": "q4_0",
+        "reasoningBudget": 2048,
+        "ttl": 0,
+        "mtpProfile": {
+          "enabled": false
+        },
+        "extraArgs": ["--flash-attn", "on"]
+      }
+    },
+    "qwen3-8b": {
+      "displayName": "Qwen3 8B efficient",
+      "hfRef": "unsloth/Qwen3-8B-GGUF:UD-Q4_K_XL",
+      "options": {
+        "ctxSize": 32768,
+        "gpuLayers": -1,
+        "cacheTypeK": "q4_0",
+        "cacheTypeV": "q4_0",
+        "reasoningBudget": 0,
+        "ttl": 600,
+        "mtpProfile": {
+          "enabled": false
+        },
+        "extraArgs": ["--flash-attn", "on"]
+      }
+    }
+  },
+  "opencode": {
+    "muse-spark-1.3-contributor-free": "muse-spark-1.3-contributor-free",
+    "big-pickle": "big-pickle"
+  }
+}
