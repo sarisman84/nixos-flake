@@ -16,7 +16,7 @@
   registryParse = builtins.tryEval (builtins.fromJSON (builtins.readFile ./models.json));
 
   validCacheTypes = ["f32" "f16" "bf16" "q8_0" "q4_0" "q4_1" "iq4_nl" "q5_0" "q5_1"];
-  validOptionFields = ["ctxSize" "gpuLayers" "cacheType" "cacheTypeK" "cacheTypeV" "reasoningBudget" "ttl" "mtpProfile" "extraArgs" "templateOverride"];
+  validOptionFields = ["ctxSize" "outputLimit" "gpuLayers" "cacheType" "cacheTypeK" "cacheTypeV" "reasoningBudget" "ttl" "mtpProfile" "extraArgs" "templateOverride"];
   validMtpFields = ["enabled" "specType" "draftModel" "draftTokensMax" "draftCtxSize" "draftCacheTypeK" "draftCacheTypeV"];
 
   errIf = cond: msg: lib.optional (!cond) msg;
@@ -44,6 +44,7 @@
     in
       (map (f: "model '${name}': unknown options field '${f}'") unknown)
       ++ errIf (!(opts ? ctxSize) || (builtins.isInt opts.ctxSize && opts.ctxSize > 0)) "model '${name}': 'options.ctxSize' must be a positive integer"
+      ++ errIf (!(opts ? outputLimit) || (builtins.isInt opts.outputLimit && opts.outputLimit > 0)) "model '${name}': 'options.outputLimit' must be a positive integer"
       ++ errIf (!(opts ? gpuLayers) || builtins.isInt opts.gpuLayers) "model '${name}': 'options.gpuLayers' must be an integer (-1 = full offload)"
       ++ errIf (!(opts ? cacheType) || (builtins.isString opts.cacheType && builtins.elem opts.cacheType validCacheTypes)) "model '${name}': 'options.cacheType' must be one of ${builtins.toString validCacheTypes}"
       ++ errIf (!(opts ? cacheTypeK) || (builtins.isString opts.cacheTypeK && builtins.elem opts.cacheTypeK validCacheTypes)) "model '${name}': 'options.cacheTypeK' must be one of ${builtins.toString validCacheTypes}"
@@ -105,6 +106,119 @@
         );
 
   wrapperScript = builtins.readFile ./opencode-wrapper.sh;
+
+  # Opencode config generation (ticket #36): the provider block is derived
+  # from the canonical registry. models.json stays the single source of
+  # truth; opencode.json is never hand-edited.
+  registry =
+    if registryParse.success && builtins.isAttrs registryParse.value
+    then registryParse.value
+    else {};
+  localModels = let
+    section = registry."llama.cpp" or null;
+  in
+    if builtins.isAttrs section
+    then section
+    else {};
+
+  validDefault =
+    registry ? default && builtins.isAttrs registry.default && (registry.default ? provider) && builtins.isString registry.default.provider && (registry.default ? name) && builtins.isString registry.default.name;
+
+  defaultRef =
+    if validDefault
+    then "${registry.default.provider}/${registry.default.name}"
+    else "llama.cpp/qwen3-8b";
+
+  mkOpencodeLimit = entry: let
+    opts =
+      if entry ? options && builtins.isAttrs entry.options
+      then entry.options
+      else {};
+    ctxSize =
+      if (opts ? ctxSize) && builtins.isInt opts.ctxSize && opts.ctxSize > 0
+      then opts.ctxSize
+      else 65536;
+    outputLimit =
+      if (opts ? outputLimit) && builtins.isInt opts.outputLimit && opts.outputLimit > 0
+      then opts.outputLimit
+      else if ctxSize >= 65536
+      then 16384
+      else 8192;
+  in {
+    context = ctxSize;
+    output = outputLimit;
+  };
+
+  # Auxiliary traffic is pinned to the efficient path: the local entry with
+  # the smallest context window (efficient stays small by map convention),
+  # alphabetical tiebreak. Independent of the session default on purpose.
+  smallModelRef = let
+    names = builtins.attrNames localModels;
+    ctxOf = name: (mkOpencodeLimit localModels.${name}).context;
+    sorted = builtins.sort (a: b:
+      if ctxOf a != ctxOf b
+      then ctxOf a < ctxOf b
+      else a < b)
+    names;
+  in
+    if sorted == []
+    then "llama.cpp/qwen3-8b"
+    else "llama.cpp/${builtins.head sorted}";
+
+  opencodeModels =
+    builtins.mapAttrs
+    (name: entry: {
+      name =
+        if (entry ? displayName) && builtins.isString entry.displayName
+        then entry.displayName
+        else name;
+      limit = mkOpencodeLimit entry;
+    })
+    localModels;
+
+  opencodeConfig = {
+    "$schema" = "https://opencode.ai/config.json";
+    model = defaultRef;
+    small_model = smallModelRef;
+    mcp = {
+      figma = {
+        type = "local";
+        command = ["npx" "-y" "figma-developer-mcp" "--stdio"];
+        environment = {
+          FIGMA_API_KEY = "{env:FIGMA_API_KEY}";
+        };
+        enabled = true;
+        timeout = 15000;
+      };
+      stitch = {
+        type = "remote";
+        url = "https://stitch.googleapis.com/mcp";
+        enabled = true;
+        headers = {
+          X-Goog-Api-Key = "{env:STITCH_API_KEY}";
+        };
+      };
+      supabase = {
+        type = "remote";
+        url = "https://mcp.supabase.com/mcp?project_ref=udqxgbtdufmiybpzrqii&features=docs%2Caccount%2Cdatabase%2Cdebugging%2Cdevelopment%2Cfunctions%2Cbranching";
+        enabled = true;
+      };
+    };
+    provider = {
+      "llama.cpp" = {
+        npm = "@ai-sdk/openai-compatible";
+        name = "llama server (local)";
+        options = {
+          baseURL = "http://127.0.0.1:8080/v1";
+          logsDirectory = "\${HOME}/.config/nixos-flake/users/spyro/modules/productivity/llm-agent/logs";
+          logFile = "opencode-llama-server.log";
+        };
+        models = opencodeModels;
+      };
+    };
+    plugin = ["opencode-parser"];
+  };
+
   opencodeWrapper = pkgs.writeShellScriptBin "opencode" (
     lib.replaceStrings
     [
@@ -140,7 +254,7 @@ in {
     pkgs.opencode-claude-auth
   ];
 
-  home.file.".config/opencode/opencode.json".source = ./opencode.json;
+  home.file.".config/opencode/opencode.json".text = builtins.toJSON opencodeConfig;
   home.file.".config/opencode/AGENTS.md".source = ./AGENTS.md;
 
   assertions =

@@ -12,10 +12,13 @@ HuggingFace model reference string (e.g., "unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M").
 Human-readable name/alias for the model entry, shown in the opencode client UI.
 
 **options**
-A sub-object containing all configurable server flags. Currently supports: `ctxSize`, `gpuLayers`, `cacheTypeK`, `cacheTypeV` (plus `cacheType` shorthand setting both), `templateOverride`, `ttl`, `reasoningBudget`, `mtpProfile`, `extraArgs`. All fields are optional - unset values fall back to safe defaults.
+A sub-object containing all configurable server flags. Currently supports: `ctxSize`, `outputLimit`, `gpuLayers`, `cacheTypeK`, `cacheTypeV` (plus `cacheType` shorthand setting both), `templateOverride`, `ttl`, `reasoningBudget`, `mtpProfile`, `extraArgs`. All fields are optional - unset values fall back to safe defaults.
 
 **ctxSize**
 Server-side context window size in tokens. Locked defaults: 131072 reasoning, 32768 efficient, 200000 as a second opt-in entry. Falls back to 65536 (64k) safe default when unset.
+
+**outputLimit**
+Opencode-local output token budget hint per model (never sent to the server). Falls back to 16384 when ctxSize >= 65536, else 8192.
 
 **reasoningBudget**
 Cap on thinking tokens per response (via `--reasoning-budget` flag). Default: 2048 on the reasoning path, 0 (immediate end of thinking) on non-thinking efficient path. Null = server default (unrestricted).
