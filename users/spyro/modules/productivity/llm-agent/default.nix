@@ -176,6 +176,140 @@
     })
     localModels;
 
+  # Swap config generation (ticket #37): per-model llama-server commands are
+  # derived from the same registry options. models.json stays the single
+  # source of truth; the hand-maintained swap config is retired.
+  mkRegistryOpts = entry:
+    if entry ? options && builtins.isAttrs entry.options
+    then entry.options
+    else {};
+  swapCmd = name: entry: let
+    opts = mkRegistryOpts entry;
+    hfRef =
+      if (entry ? hfRef) && builtins.isString entry.hfRef
+      then entry.hfRef
+      else name;
+    ctxSize =
+      if (opts ? ctxSize) && builtins.isInt opts.ctxSize && opts.ctxSize > 0
+      then toString opts.ctxSize
+      else "65536";
+    cacheTypeK =
+      if (opts ? cacheTypeK) && builtins.isString opts.cacheTypeK
+      then opts.cacheTypeK
+      else if (opts ? cacheType) && builtins.isString opts.cacheType
+      then opts.cacheType
+      else "f16";
+    cacheTypeV =
+      if (opts ? cacheTypeV) && builtins.isString opts.cacheTypeV
+      then opts.cacheTypeV
+      else if (opts ? cacheType) && builtins.isString opts.cacheType
+      then opts.cacheType
+      else "f16";
+    gpuLayers =
+      if !((opts ? gpuLayers) && builtins.isInt opts.gpuLayers)
+      then "auto"
+      else if opts.gpuLayers < 0
+      then "all"
+      else toString opts.gpuLayers;
+    reasoningArgs =
+      if !(opts ? reasoningBudget) || opts.reasoningBudget == null
+      then []
+      else ["--reasoning-budget" (toString opts.reasoningBudget)];
+    templateArgs =
+      if (opts ? templateOverride) && builtins.isString opts.templateOverride
+      then ["--chat-template-file" opts.templateOverride]
+      else [];
+    # MTP flag names per llama.cpp speculative docs; re-verify when MTP
+    # tuning lands (deferred post-spec). All current entries disable MTP.
+    mtpProfile =
+      if (opts ? mtpProfile) && builtins.isAttrs opts.mtpProfile
+      then opts.mtpProfile
+      else {};
+    mtpArgs =
+      if (mtpProfile ? enabled) && mtpProfile.enabled == true
+      then
+        [
+          "--spec-type"
+          (
+            if (mtpProfile ? specType) && builtins.isString mtpProfile.specType
+            then mtpProfile.specType
+            else "draft-mtp"
+          )
+        ]
+        ++ lib.optional ((mtpProfile ? draftModel) && builtins.isString mtpProfile.draftModel) "--model-draft"
+        ++ lib.optional ((mtpProfile ? draftModel) && builtins.isString mtpProfile.draftModel) mtpProfile.draftModel
+        ++ lib.optional ((mtpProfile ? draftTokensMax) && builtins.isInt mtpProfile.draftTokensMax) "--spec-draft-n-max"
+        ++ lib.optional ((mtpProfile ? draftTokensMax) && builtins.isInt mtpProfile.draftTokensMax) (toString mtpProfile.draftTokensMax)
+        ++ lib.optional ((mtpProfile ? draftCtxSize) && builtins.isInt mtpProfile.draftCtxSize) "--ctx-size-draft"
+        ++ lib.optional ((mtpProfile ? draftCtxSize) && builtins.isInt mtpProfile.draftCtxSize) (toString mtpProfile.draftCtxSize)
+        ++ lib.optional ((mtpProfile ? draftCacheTypeK) && builtins.isString mtpProfile.draftCacheTypeK) "--cache-type-k-draft"
+        ++ lib.optional ((mtpProfile ? draftCacheTypeK) && builtins.isString mtpProfile.draftCacheTypeK) mtpProfile.draftCacheTypeK
+        ++ lib.optional ((mtpProfile ? draftCacheTypeV) && builtins.isString mtpProfile.draftCacheTypeV) "--cache-type-v-draft"
+        ++ lib.optional ((mtpProfile ? draftCacheTypeV) && builtins.isString mtpProfile.draftCacheTypeV) mtpProfile.draftCacheTypeV
+      else [];
+    extraArgs =
+      if (opts ? extraArgs) && builtins.isList opts.extraArgs
+      then opts.extraArgs
+      else [];
+  in
+    lib.concatStringsSep " " ([
+        "${pkgs.llama-cpp}/bin/llama-server"
+        "--port"
+        "\${PORT}"
+        "-hf"
+        hfRef
+        "--jinja"
+        "--ctx-size"
+        ctxSize
+        "--cache-type-k"
+        cacheTypeK
+        "--cache-type-v"
+        cacheTypeV
+        "--gpu-layers"
+        gpuLayers
+      ]
+      ++ reasoningArgs
+      ++ templateArgs
+      ++ mtpArgs
+      ++ extraArgs);
+
+  swapModels =
+    builtins.mapAttrs
+    (name: entry: let
+      opts = mkRegistryOpts entry;
+    in {
+      checkEndpoint = "/health";
+      cmd = swapCmd name entry;
+      ttl =
+        if (opts ? ttl) && builtins.isInt opts.ttl && opts.ttl >= 0
+        then opts.ttl
+        else 120;
+    })
+    localModels;
+
+  # Explicit one-resident group (map decision): exactly one local model
+  # resident at a time. llama-swap's implicit default is identical; this
+  # states it for audit.
+  swapConfig = {
+    healthCheckTimeout = 300;
+    globalTTL = 0;
+    routing = {
+      router = {
+        use = "group";
+        settings = {
+          groups = {
+            local-llms = {
+              swap = true;
+              exclusive = true;
+              members = builtins.attrNames localModels;
+            };
+          };
+        };
+      };
+    };
+    models = swapModels;
+  };
+
   opencodeConfig = {
     "$schema" = "https://opencode.ai/config.json";
     model = defaultRef;
@@ -256,6 +390,9 @@ in {
 
   home.file.".config/opencode/opencode.json".text = builtins.toJSON opencodeConfig;
   home.file.".config/opencode/AGENTS.md".source = ./AGENTS.md;
+  # The hand-maintained swap config is retired; backupFileExtension keeps a
+  # reversible copy of the existing file on first deploy.
+  home.file.".config/llama-swap/config.yaml".text = builtins.toJSON swapConfig;
 
   assertions =
     map
