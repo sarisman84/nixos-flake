@@ -35,7 +35,7 @@
         "mtpProfile": {
           "enabled": false
         },
-        "extraArgs": ["--flash-attn", "on"]
+        "extraArgs": ["--flash-attn", "on", "--no-mmproj"]
       }
     },
     "qwen3-8b": {
