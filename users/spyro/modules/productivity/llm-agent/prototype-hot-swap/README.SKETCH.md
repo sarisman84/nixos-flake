@@ -41,6 +41,18 @@ bash users/spyro/modules/productivity/llm-agent/prototype-hot-swap/demo.SKETCH.s
 5. **`models` subcommand** passes through to opencode untouched (it will
    query the proxy's `/v1/models`).
 
+## DECIDED (user reaction, 2026-09-28)
+
+- **Generated files live outside the repo, under the user dir.** Nothing
+  generated in the repo: `opencode.json` → `~/.config/opencode/opencode.json`
+  (already `home.file`-managed today), swap config →
+  `~/.config/llama-swap/config.yaml`, model registry →
+  `~/.config/llama-swap/models.json` (wrapper runtime reads). Repo holds
+  only Nix declarations. Implementer validates the `home.file` mechanics.
+- Rest of the sketch accepted as-is (fail-fast on proxy-down, picker-driven
+  in-session switching, `--cloud` bypass, journald logs, `models`
+  passthrough).
+
 ## Deliberately NOT in the sketch
 
 - Real Nix generation, real `home.file` paths, stable-vs-unstable package
