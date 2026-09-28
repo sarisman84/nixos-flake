@@ -15,7 +15,7 @@ Human-readable name/alias for the model entry, shown in the opencode client UI.
 A sub-object containing all configurable server flags. Currently supports: `ctxSize`, `outputLimit`, `gpuLayers`, `cacheTypeK`, `cacheTypeV` (plus `cacheType` shorthand setting both), `templateOverride`, `ttl`, `reasoningBudget`, `mtpProfile`, `extraArgs`. All fields are optional - unset values fall back to safe defaults.
 
 **ctxSize**
-Server-side context window size in tokens. Locked defaults: 131072 reasoning, 32768 efficient, 200000 as a second opt-in entry. Falls back to 65536 (64k) safe default when unset.
+Server-side context window size in tokens. Locked defaults: 131072 reasoning, 65536 efficient (minimum viable under the harness request overhead — 32768 starves it into a compact loop), 200000 as a second opt-in entry. Falls back to 65536 (64k) safe default when unset.
 
 **outputLimit**
 Opencode-local output token budget hint per model (never sent to the server). Falls back to 16384 when ctxSize >= 65536, else 8192.

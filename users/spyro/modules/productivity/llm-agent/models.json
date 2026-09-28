@@ -42,7 +42,7 @@
       "displayName": "Qwen3 8B efficient",
       "hfRef": "unsloth/Qwen3-8B-GGUF:UD-Q4_K_XL",
       "options": {
-        "ctxSize": 32768,
+        "ctxSize": 65536,
         "outputLimit": 8192,
         "gpuLayers": -1,
         "cacheTypeK": "q4_0",
