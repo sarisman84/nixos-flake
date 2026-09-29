@@ -17,7 +17,10 @@ opencode_bin="__opencode_bin__"
 models_json="__models_json__"
 jq_bin="__jq_bin__"
 pgrep_bin="__pgrep_bin__"
-log_file="/tmp/opencode-llama-swap.log"
+oc_name="__oc_name__"
+oc_desktop_name="__oc_desktop_name__"
+swap_name="__swap_name__"
+log_file="__log_file__"
 
 # The swap backend is shared across opencode instances. Instances are tracked
 # by process name: when the last one exits, the backend (llama-swap and its
@@ -40,10 +43,10 @@ is_live_pid() {
 # this is called from the EXIT trap, so it is not counted.
 other_opencode_running() {
   local pid
-  for pid in $("$pgrep_bin" -x "opencode|opencode-desktop" 2>/dev/null || true); do
-    if is_live_pid "$pid" "opencode"; then
+  for pid in $("$pgrep_bin" -x "$oc_name|$oc_desktop_name" 2>/dev/null || true); do
+    if is_live_pid "$pid" "$oc_name"; then
       return 0
-    elif is_live_pid "$pid" "opencode-desktop"; then
+    elif is_live_pid "$pid" "$oc_desktop_name"; then
       return 0
     fi
   done
@@ -55,9 +58,9 @@ other_opencode_running() {
 # backstop. No-op when nothing is running.
 stop_swap_backend() {
   local pid
-  for pid in $("$pgrep_bin" -x llama-swap 2>/dev/null || true); do
-    is_live_pid "$pid" "llama-swap" || continue
-    echo "All opencode instances closed; stopping llama-swap (pid $pid)"
+  for pid in $("$pgrep_bin" -x "$swap_name" 2>/dev/null || true); do
+    is_live_pid "$pid" "$swap_name" || continue
+    echo "All opencode instances closed; stopping $swap_name (pid $pid)"
     kill -TERM "$pid" 2>/dev/null || true
     local waited=0
     while [ $waited -lt 20 ] && kill -0 "$pid" 2>/dev/null; do
@@ -65,7 +68,7 @@ stop_swap_backend() {
       waited=$((waited + 1))
     done
     if kill -0 "$pid" 2>/dev/null; then
-      echo "llama-swap (pid $pid) did not exit; sending SIGKILL" >>"$log_file"
+      echo "$swap_name (pid $pid) did not exit; sending SIGKILL" >>"$log_file"
       kill -KILL "$pid" 2>/dev/null || true
     fi
   done

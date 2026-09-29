@@ -7,7 +7,10 @@ set -euo pipefail
 # wrappers that die without running their EXIT trap.
 
 pgrep_bin="__pgrep_bin__"
-log_file="/tmp/opencode-llama-swap.log"
+oc_name="__oc_name__"
+oc_desktop_name="__oc_desktop_name__"
+swap_name="__swap_name__"
+log_file="__log_file__"
 
 # Never touch a backend younger than this many seconds: a wrapper starts
 # llama-swap and only milliseconds later spawns opencode.
@@ -24,8 +27,8 @@ is_live_pid() {
 # True if any opencode CLI or opencode-desktop instance is running.
 oc_running() {
   local pid
-  for pid in $("$pgrep_bin" -x "opencode|opencode-desktop" 2>/dev/null || true); do
-    if is_live_pid "$pid" "opencode" || is_live_pid "$pid" "opencode-desktop"; then
+  for pid in $("$pgrep_bin" -x "$oc_name|$oc_desktop_name" 2>/dev/null || true); do
+    if is_live_pid "$pid" "$oc_name" || is_live_pid "$pid" "$oc_desktop_name"; then
       return 0
     fi
   done
@@ -33,8 +36,8 @@ oc_running() {
 }
 
 swap_pid=""
-for pid in $("$pgrep_bin" -x llama-swap 2>/dev/null || true); do
-  if is_live_pid "$pid" "llama-swap"; then
+for pid in $("$pgrep_bin" -x "$swap_name" 2>/dev/null || true); do
+  if is_live_pid "$pid" "$swap_name"; then
     swap_pid="$pid"
     break
   fi
@@ -46,7 +49,7 @@ oc_running && exit 0
 age=$(( $(date +%s) - $(stat -c %Y "/proc/$swap_pid" 2>/dev/null || echo 0) ))
 [ "$age" -ge "$min_uptime" ] || exit 0
 
-echo "$(date -Is) watchdog: no opencode instances; stopping llama-swap (pid $swap_pid)" >>"$log_file"
+echo "$(date -Is) watchdog: no opencode instances; stopping $swap_name (pid $swap_pid)" >>"$log_file"
 kill -TERM "$swap_pid" 2>/dev/null || true
 waited=0
 while [ $waited -lt 20 ] && kill -0 "$swap_pid" 2>/dev/null; do
@@ -54,6 +57,6 @@ while [ $waited -lt 20 ] && kill -0 "$swap_pid" 2>/dev/null; do
   waited=$((waited + 1))
 done
 if kill -0 "$swap_pid" 2>/dev/null; then
-  echo "$(date -Is) watchdog: llama-swap (pid $swap_pid) did not exit; sending SIGKILL" >>"$log_file"
+  echo "$(date -Is) watchdog: $swap_name (pid $swap_pid) did not exit; sending SIGKILL" >>"$log_file"
   kill -KILL "$swap_pid" 2>/dev/null || true
 fi

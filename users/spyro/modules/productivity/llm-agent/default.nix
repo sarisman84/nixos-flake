@@ -365,23 +365,31 @@
       "__llama_health_url__"
       "__llama_host__"
       "__llama_port__"
-       "__models_json__"
-       "__jq_bin__"
-       "__pgrep_bin__"
-     ]
-     [
-       envDir
-       "${pkgs.curl}/bin/curl"
-       "${pkgs.llama-swap}/bin/llama-swap"
-       "${config.home.homeDirectory}/.config/llama-swap/config.yaml"
-       "${pkgs.opencode}/bin/opencode"
-       llamaHealthUrl
-       llamaHost
-       llamaPort
-       modelsJson
-       "${pkgs.jq}/bin/jq"
-       "${pkgs.procps}/bin/pgrep"
-     ]
+        "__models_json__"
+        "__jq_bin__"
+        "__pgrep_bin__"
+        "__oc_name__"
+        "__oc_desktop_name__"
+        "__swap_name__"
+        "__log_file__"
+      ]
+      [
+        envDir
+        "${pkgs.curl}/bin/curl"
+        "${pkgs.llama-swap}/bin/llama-swap"
+        "${config.home.homeDirectory}/.config/llama-swap/config.yaml"
+        "${pkgs.opencode}/bin/opencode"
+        llamaHealthUrl
+        llamaHost
+        llamaPort
+        modelsJson
+        "${pkgs.jq}/bin/jq"
+        "${pkgs.procps}/bin/pgrep"
+        "opencode"
+        "opencode-desktop"
+        "llama-swap"
+        "/tmp/opencode-llama-swap.log"
+      ]
       wrapperScript
     );
 
@@ -393,9 +401,17 @@
     lib.replaceStrings
     [
       "__pgrep_bin__"
+      "__oc_name__"
+      "__oc_desktop_name__"
+      "__swap_name__"
+      "__log_file__"
     ]
     [
       "${pkgs.procps}/bin/pgrep"
+      "opencode"
+      "opencode-desktop"
+      "llama-swap"
+      "/tmp/opencode-llama-swap.log"
     ]
     watchdogScript
   );
