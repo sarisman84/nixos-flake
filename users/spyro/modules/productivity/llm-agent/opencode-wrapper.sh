@@ -30,23 +30,23 @@ log_file="__log_file__"
 
 ran_opencode=0
 
-# True if $1 is a live process whose comm is exactly $2. The comm check
-# guards against pid reuse between pgrep and this call.
+# True if $1 is a live process whose executable basename is exactly $2.
+# /proc comm is NOT used: the kernel truncates it to 15 characters and
+# "opencode-desktop" is 16.
 is_live_pid() {
-  local pid="$1" want="$2"
-  [ -r "/proc/$pid/comm" ] || return 1
-  [ "$(cat "/proc/$pid/comm" 2>/dev/null)" = "$want" ]
+  local pid="$1" want="$2" exe
+  exe=$(readlink "/proc/$pid/exe" 2>/dev/null) || return 1
+  [ "${exe##*/}" = "$want" ]
 }
 
 # True if any opencode CLI or opencode-desktop instance is still running.
 # Our own opencode child has already exited (and been reaped) by the time
-# this is called from the EXIT trap, so it is not counted.
+# this is called from the EXIT trap, so it is not counted. Candidates come
+# from a loose command-line pgrep; the exe check above filters the rest.
 other_opencode_running() {
   local pid
-  for pid in $("$pgrep_bin" -x "$oc_name|$oc_desktop_name" 2>/dev/null || true); do
-    if is_live_pid "$pid" "$oc_name"; then
-      return 0
-    elif is_live_pid "$pid" "$oc_desktop_name"; then
+  for pid in $("$pgrep_bin" -f "(^|/)($oc_name|$oc_desktop_name)( |$)" 2>/dev/null || true); do
+    if is_live_pid "$pid" "$oc_name" || is_live_pid "$pid" "$oc_desktop_name"; then
       return 0
     fi
   done
@@ -58,7 +58,7 @@ other_opencode_running() {
 # backstop. No-op when nothing is running.
 stop_swap_backend() {
   local pid
-  for pid in $("$pgrep_bin" -x "$swap_name" 2>/dev/null || true); do
+  for pid in $("$pgrep_bin" -f "(^|/)$swap_name( |$)" 2>/dev/null || true); do
     is_live_pid "$pid" "$swap_name" || continue
     echo "All opencode instances closed; stopping $swap_name (pid $pid)"
     kill -TERM "$pid" 2>/dev/null || true
