@@ -1,7 +1,7 @@
 {
   "default": {
     "provider": "llama.cpp",
-    "name": "qwen3-8b"
+    "name": "qwen3-30b-a3b"
   },
   "llama.cpp": {
     "qwen3.8-27b": {
@@ -38,21 +38,55 @@
         "extraArgs": ["--flash-attn", "on", "--no-mmproj"]
       }
     },
-    "qwen3-8b": {
-      "displayName": "Qwen3 8B efficient",
-      "hfRef": "unsloth/Qwen3-8B-GGUF:UD-Q4_K_XL",
+    "qwen3-30b-a3b": {
+      "displayName": "Qwen3 30B-A3B fast",
+      "hfRef": "unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:UD-Q4_K_XL",
       "options": {
-        "ctxSize": 65536,
-        "outputLimit": 8192,
+        "ctxSize": 131072,
+        "outputLimit": 16384,
         "gpuLayers": -1,
         "cacheTypeK": "q4_0",
         "cacheTypeV": "q4_0",
         "reasoningBudget": 0,
-        "ttl": 600,
+        "ttl": 0,
         "mtpProfile": {
           "enabled": false
         },
         "extraArgs": ["--flash-attn", "on"]
+      }
+    },
+    "gpt-oss-20b": {
+      "displayName": "GPT-OSS 20B fast",
+      "hfRef": "openai/gpt-oss-20b:main",
+      "options": {
+        "ctxSize": 131072,
+        "outputLimit": 16384,
+        "gpuLayers": -1,
+        "cacheTypeK": "q8_0",
+        "cacheTypeV": "q8_0",
+        "reasoningBudget": null,
+        "ttl": 0,
+        "mtpProfile": {
+          "enabled": false
+        },
+        "extraArgs": ["--flash-attn", "on", "--reasoning-effort", "low"]
+      }
+    },
+    "mistral-small-3.2-24b": {
+      "displayName": "Mistral Small 3.2 24B",
+      "hfRef": "unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:UD-Q4_K_XL",
+      "options": {
+        "ctxSize": 131072,
+        "outputLimit": 16384,
+        "gpuLayers": -1,
+        "cacheTypeK": "q4_0",
+        "cacheTypeV": "q4_0",
+        "reasoningBudget": 0,
+        "ttl": 0,
+        "mtpProfile": {
+          "enabled": false
+        },
+        "extraArgs": ["--flash-attn", "on", "--no-mmproj"]
       }
     }
   },
