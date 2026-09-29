@@ -16,11 +16,66 @@ swap_config="__swap_config__"
 opencode_bin="__opencode_bin__"
 models_json="__models_json__"
 jq_bin="__jq_bin__"
+pgrep_bin="__pgrep_bin__"
 log_file="/tmp/opencode-llama-swap.log"
 
-# NOTE: the swap backend is shared and long-lived (idle TTL eviction drops
-# VRAM to zero on its own), so a backend started here is deliberately left
-# running on exit — there is nothing to clean up.
+# The swap backend is shared across opencode instances. Instances are tracked
+# by process name: when the last one exits, the backend (llama-swap and its
+# llama-server children) is stopped gracefully, so no manual cleanup is
+# needed. opencode-desktop is counted as an instance too — it talks to the
+# same backend.
+
+ran_opencode=0
+
+# True if $1 is a live process whose comm is exactly $2. The comm check
+# guards against pid reuse between pgrep and this call.
+is_live_pid() {
+  local pid="$1" want="$2"
+  [ -r "/proc/$pid/comm" ] || return 1
+  [ "$(cat "/proc/$pid/comm" 2>/dev/null)" = "$want" ]
+}
+
+# True if any opencode CLI or opencode-desktop instance is still running.
+# Our own opencode child has already exited (and been reaped) by the time
+# this is called from the EXIT trap, so it is not counted.
+other_opencode_running() {
+  local pid
+  for pid in $("$pgrep_bin" -x "opencode|opencode-desktop" 2>/dev/null || true); do
+    if is_live_pid "$pid" "opencode"; then
+      return 0
+    elif is_live_pid "$pid" "opencode-desktop"; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Stop the shared backend: SIGTERM llama-swap (its handler drains requests
+# and stops the upstream llama-server processes), then SIGKILL as a
+# backstop. No-op when nothing is running.
+stop_swap_backend() {
+  local pid
+  for pid in $("$pgrep_bin" -x llama-swap 2>/dev/null || true); do
+    is_live_pid "$pid" "llama-swap" || continue
+    echo "All opencode instances closed; stopping llama-swap (pid $pid)"
+    kill -TERM "$pid" 2>/dev/null || true
+    local waited=0
+    while [ $waited -lt 20 ] && kill -0 "$pid" 2>/dev/null; do
+      sleep 1
+      waited=$((waited + 1))
+    done
+    if kill -0 "$pid" 2>/dev/null; then
+      echo "llama-swap (pid $pid) did not exit; sending SIGKILL" >>"$log_file"
+      kill -KILL "$pid" 2>/dev/null || true
+    fi
+  done
+}
+
+trap '
+  if [ "$ran_opencode" = "1" ] && ! other_opencode_running; then
+    stop_swap_backend
+  fi
+' EXIT
 
 list_models() {
   local section="$1"
@@ -167,7 +222,8 @@ if [ $mode != "none" ]; then
 fi
 
 # Local mode needs the shared swap backend. If it is already healthy,
-# nothing happens; otherwise it is started (and left running — see NOTE).
+# nothing happens; otherwise it is started. The EXIT trap (above) stops it
+# when this turns out to be the last opencode instance.
 if [ $mode = "local" ] && ! "$curl_bin" --fail --silent --show-error "__llama_health_url__" >/dev/null 2>&1; then
   echo "Starting llama-swap (models load on demand)"
   "$swap_bin" -config "$swap_config" -listen "__llama_host__:__llama_port__" \
@@ -194,4 +250,7 @@ if [ $mode = "local" ] && ! "$curl_bin" --fail --silent --show-error "__llama_he
   fi
 fi
 
+# From here on a session is actually running; on exit the trap shuts the
+# backend down if this was the last opencode instance.
+ran_opencode=1
 "$opencode_bin" "${opencode_args[@]}"
