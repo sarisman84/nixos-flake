@@ -106,6 +106,7 @@
         );
 
   wrapperScript = builtins.readFile ./opencode-wrapper.sh;
+  watchdogScript = builtins.readFile ./llama-swap-watchdog.sh;
 
   # Opencode config generation (ticket #36): the provider block is derived
   # from the canonical registry. models.json stays the single source of
@@ -364,31 +365,81 @@
       "__llama_health_url__"
       "__llama_host__"
       "__llama_port__"
-      "__models_json__"
-      "__jq_bin__"
+        "__models_json__"
+        "__jq_bin__"
+        "__pgrep_bin__"
+        "__oc_name__"
+        "__oc_desktop_name__"
+        "__swap_name__"
+        "__log_file__"
+      ]
+      [
+        envDir
+        "${pkgs.curl}/bin/curl"
+        "${pkgs.llama-swap}/bin/llama-swap"
+        "${config.home.homeDirectory}/.config/llama-swap/config.yaml"
+        "${pkgs.opencode}/bin/opencode"
+        llamaHealthUrl
+        llamaHost
+        llamaPort
+        modelsJson
+        "${pkgs.jq}/bin/jq"
+        "${pkgs.procps}/bin/pgrep"
+        "opencode"
+        "opencode-desktop"
+        "llama-swap"
+        "/tmp/opencode-llama-swap.log"
+      ]
+      wrapperScript
+    );
+
+  # Periodic safety net: the wrapper's on-exit hook covers CLI instances, but
+  # it cannot fire for a SIGKILLed wrapper, and opencode-desktop never runs
+  # the wrapper at all. This timer-driven oneshot stops the backend whenever
+  # no opencode instance is left and the backend is past its startup grace.
+  llamaSwapWatchdog = pkgs.writeShellScriptBin "llama-swap-watchdog" (
+    lib.replaceStrings
+    [
+      "__pgrep_bin__"
+      "__oc_name__"
+      "__oc_desktop_name__"
+      "__swap_name__"
+      "__log_file__"
     ]
     [
-      envDir
-      "${pkgs.curl}/bin/curl"
-      "${pkgs.llama-swap}/bin/llama-swap"
-      "${config.home.homeDirectory}/.config/llama-swap/config.yaml"
-      "${pkgs.opencode}/bin/opencode"
-      llamaHealthUrl
-      llamaHost
-      llamaPort
-      modelsJson
-      "${pkgs.jq}/bin/jq"
+      "${pkgs.procps}/bin/pgrep"
+      "opencode"
+      "opencode-desktop"
+      "llama-swap"
+      "/tmp/opencode-llama-swap.log"
     ]
-    wrapperScript
+    watchdogScript
   );
-in {
-  home.packages = [
-    pkgs.llama-cpp
-    pkgs.llama-swap
-    opencodeWrapper
-    pkgs.opencode-desktop
-    pkgs.opencode-claude-auth
-  ];
+ in {
+   home.packages = [
+     pkgs.llama-cpp
+     pkgs.llama-swap
+     opencodeWrapper
+     pkgs.opencode-desktop
+     pkgs.opencode-claude-auth
+   ];
+
+   systemd.user.services."llama-swap-watchdog" = {
+     Unit.Description = "Stop the llama-swap backend when no opencode instances remain";
+     Service = {
+       Type = "oneshot";
+       ExecStart = "${llamaSwapWatchdog}/bin/llama-swap-watchdog";
+     };
+   };
+
+   systemd.user.timers."llama-swap-watchdog" = {
+     Unit.Description = "Periodically run the llama-swap watchdog";
+     Timer = {
+       OnBootSec = "30s";
+       OnUnitActiveSec = "30s";
+     };
+     Install.WantedBy = [ "timers.target" ];
+   };
 
   home.file.".config/opencode/opencode.json".text = builtins.toJSON opencodeConfig;
   home.file.".config/opencode/AGENTS.md".source = ./AGENTS.md;

@@ -227,6 +227,42 @@ Expected:
 
 ---
 
+## Backend shutdown on last instance exit
+
+The wrapper's EXIT trap stops `llama-swap` (SIGTERM, 20 s wait, SIGKILL
+backstop) when the last opencode instance exits — the backend (and its
+`llama-server` children) no longer outlives the sessions. A systemd user
+timer (`llama-swap-watchdog`, every 30 s) is the safety net for cases the
+trap cannot cover: the last instance being the desktop app (which never
+runs the wrapper), or a SIGKILLed wrapper. Backends younger than 90 s are
+left alone (startup grace), so the watchdog never kills a backend a just
+launched instance is still connecting to.
+
+Instance detection matches the `/proc/PID/exe` basename, **not** `comm`:
+the kernel truncates `comm` to 15 characters and `opencode-desktop` is 16,
+so `pgrep -x`/`comm` comparison can never see the desktop app.
+
+Manual tests (rebuild first: `just build two-b`):
+```bash
+# Terminal 1: opencode --model qwen3-8b
+# Terminal 2 (while the session is open):
+pgrep -af 'llama-swap|llama-server'    # backend running
+# Close the session in Terminal 1, then:
+sleep 2
+pgrep -af 'llama-swap|llama-server'    # nothing — backend stopped
+```
+
+- Multi-instance: open two local-model sessions, close one → backend
+  survives; close the last → backend stops.
+- Cloud mode: `opencode --cloud <name>` never starts/stops the backend.
+- Desktop last: run a CLI local session, then close `opencode-desktop`
+  last → backend is orphaned, watchdog stops it within ~30 s
+  (`journalctl --user -u llama-swap-watchdog -n 20`).
+- Grace: right after a rebuild, an orphaned < 90 s backend is NOT killed
+  by the first watchdog runs.
+
+---
+
 ## Commit history (expected)
 
 ```
