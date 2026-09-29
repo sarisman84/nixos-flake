@@ -57,7 +57,7 @@
     },
     "gpt-oss-20b": {
       "displayName": "GPT-OSS 20B fast",
-      "hfRef": "openai/gpt-oss-20b:main",
+      "hfRef": "unsloth/gpt-oss-20b-GGUF:UD-Q4_K_XL",
       "options": {
         "ctxSize": 131072,
         "outputLimit": 16384,
