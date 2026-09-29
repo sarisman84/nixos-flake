@@ -16,22 +16,30 @@ log_file="__log_file__"
 # llama-swap and only milliseconds later spawns opencode.
 min_uptime=90
 
-# True if $1 is a live process whose executable basename is exactly $2.
-# /proc comm is NOT used: the kernel truncates it to 15 characters and
-# "opencode-desktop" is 16.
-is_live_pid() {
-  local pid="$1" want="$2" exe
+# True if $1 is a live $2 instance. Neither /proc comm nor the /proc exe
+# basename can be trusted on its own: the kernel truncates comm to 15
+# characters ("opencode-desktop" is 16), and Nix wrapping means the exe is
+# never literally "opencode" — the wrapper script runs as bash, and the real
+# binary is .opencode-wrapped. So accept a process whose exe basename OR any
+# argv basename equals $2. Our own PID is never a match.
+matches_instance() {
+  local pid="$1" want="$2" exe arg
+  [ "$pid" != "$$" ] || return 1
   exe=$(readlink "/proc/$pid/exe" 2>/dev/null) || return 1
-  [ "${exe##*/}" = "$want" ]
+  [ "${exe##*/}" = "$want" ] && return 0
+  while IFS= read -r -d '' arg; do
+    [ "${arg##*/}" = "$want" ] && return 0
+  done <"/proc/$pid/cmdline" 2>/dev/null
+  return 1
 }
 
 # True if any opencode CLI or opencode-desktop instance is running.
-# Candidates come from a loose command-line pgrep; the exe check above
-# filters the rest.
+# Candidates come from a loose command-line pgrep; the check above filters
+# the rest.
 oc_running() {
   local pid
   for pid in $("$pgrep_bin" -f "(^|/)($oc_name|$oc_desktop_name)( |$)" 2>/dev/null || true); do
-    if is_live_pid "$pid" "$oc_name" || is_live_pid "$pid" "$oc_desktop_name"; then
+    if matches_instance "$pid" "$oc_name" || matches_instance "$pid" "$oc_desktop_name"; then
       return 0
     fi
   done
@@ -40,7 +48,7 @@ oc_running() {
 
 swap_pid=""
 for pid in $("$pgrep_bin" -f "(^|/)$swap_name( |$)" 2>/dev/null || true); do
-  if is_live_pid "$pid" "$swap_name"; then
+  if matches_instance "$pid" "$swap_name"; then
     swap_pid="$pid"
     break
   fi
