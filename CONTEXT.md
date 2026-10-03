@@ -1,81 +1,101 @@
-# Context: LLM Setup Optimization (Updated)
+# Context: Local LLM Serving
 
-## Glossary (updated per user input)
+How local models are served, swapped, and de-allocated on this machine. Vocabulary for the `llm-agent` module.
+
+## Language
+
+### The registry
 
 **model entry**
-A single model configuration in the JSON registry. Minimum fields: `displayName` (alias) and `hfRef` (HuggingFace URL). All other settings live under an `options` sub-object.
+A single model configuration in the JSON registry. Identity is the **model key**; `displayName` is cosmetic and never transmitted. `hfRef` and `options` are the other fields. All tunables live under `options`.
+_Avoid_: model, local model
 
-**hfRef**
-HuggingFace model reference string (e.g., "unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M"). Determines the model weights, quantization, and context footprint.
+**model key**
+The registry key of a model entry. The identity sent on the wire and matched by the backend; must equal the backend's model ID.
+_Avoid_: id, name, model name
 
 **displayName**
-Human-readable name/alias for the model entry, shown in the opencode client UI.
+Human-readable label for a model entry, shown in the model selector. Cosmetic; never sent to the backend.
+_Avoid_: model name, alias, title
+
+**hfRef**
+HuggingFace model reference (e.g. `"unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M"`). Determines weights, quantization, and memory footprint.
 
 **options**
-A sub-object containing all configurable server flags. Currently supports: `ctxSize`, `outputLimit`, `gpuLayers`, `cacheTypeK`, `cacheTypeV` (plus `cacheType` shorthand setting both), `templateOverride`, `ttl`, `reasoningBudget`, `mtpProfile`, `extraArgs`. All fields are optional - unset values fall back to safe defaults.
+Sub-object holding every tunable for a model entry. All fields optional; unset values fall back to defaults.
+_Avoid_: config, settings, params
 
 **ctxSize**
-Server-side context window size in tokens. Locked defaults: 131072 reasoning, 65536 efficient (minimum viable under the harness request overhead — 32768 starves it into a compact loop), 200000 as a second opt-in entry. Falls back to 65536 (64k) safe default when unset.
+Server-side context window in tokens.
+_Avoid_: context window, context length
 
 **outputLimit**
-Opencode-local output token budget hint per model (never sent to the server). Falls back to 16384 when ctxSize >= 65536, else 8192.
+Client-side output token budget hint. Never sent to the backend.
+_Avoid_: maxTokens, maxOutputTokens
 
 **reasoningBudget**
-Cap on thinking tokens per response (via `--reasoning-budget` flag). Default: 2048 on the reasoning path, 0 (immediate end of thinking) on non-thinking efficient path. Null = server default (unrestricted).
-
-**mtpProfile**
-Multi-Token Prediction configuration profile. Optional object under `options`, default off (speed XOR max context, never implicit).
-
-**llama-swap**
-The llama-swap proxy server that serves models locally via HTTP.
-
-**maxCtxSize**
-Maximum-context opt-in ceiling (null = no maximum profile).
-
-**hardware profile**
-RTX 5090 (32GB VRAM) + 64GB system RAM + Ryzen 9950X3D. Constrains maximum feasible ctxSize for given cacheType and model size.
+Cap on thinking tokens per response. `null` = unrestricted.
+_Avoid_: thinking budget, reasoning tokens
 
 **cacheTypeK / cacheTypeV**
-Split KV-cache quantization formats for K and V (e.g., "q4_0"); `-fa on` required with quantized V. Bare `cacheType` remains as shorthand setting both. Determines memory footprint per token of context.
+Split KV-cache quantization formats. Determines memory footprint per token of context. Bare `cacheType` is shorthand for both. Quantized `cacheTypeV` requires flash attention.
+
+**mtpProfile**
+Multi-Token Prediction tuning. Speed XOR max context, never implicit.
 
 **efficient model**
-Quantized GGUF model balancing context size and quality within hardware constraints.
+A model entry chosen for capability rather than cost: large context, reasoning budget enabled. The opposite of a **cheap model**.
+_Avoid_: reasoning model, big model, premium model
 
-## JSON Config Structure
+**cheap model**
+A model entry chosen for cost rather than capability: small context, no reasoning budget. Used where quality is not load-bearing.
+_Avoid_: efficient model, small model, fast model, light model
 
-Minimum object per model:
-```json
-{
-  "displayName": "Alias name",
-  "hfRef": "unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M",
-  "options": {
-    "ctxSize": 131072,
-    "reasoningBudget": 2048,
-    "cacheTypeK": "q4_0",
-    "cacheTypeV": "q4_0"
-  }
-}
-```
+### Runtime
 
-- `displayName` and `hfRef` are required
-- `options` is an optional object; unset fields use safe defaults
-- ctxSize target range: 120-200k tokens (user-specified)
-- Mixture of automatic defaults + override capability (Q4)
+**backend**
+The long-lived process that fronts all local models and owns the local endpoint. Always up. Not the thing that costs resources.
+_Avoid_: server, proxy, daemon
 
-## Key Relationships
+**resident model**
+The one model entry currently held in memory by the backend. At most one at a time. The unit of resource de-allocation.
+_Avoid_: loaded model, warm model, active model, current model
 
-- **model entry** → `hfRef` determines model weights; `options.ctxSize` sets context window
-- **ctxSize** + **cacheTypeK/V** → combined memory footprint constrains by VRAM (32GB) + RAM (64GB)
-- **options** sub-object → all server flags live here; unspecified values auto-default
-- **hardware profile** → 32GB VRAM limits max ctxSize for quantized models; 64GB RAM provides overflow offload
+**swap**
+Replacing the resident model with another. Costs a full unload and reload; there is no partial or warm variant.
+_Avoid_: reload, rotate, switch, cycle
 
-## Design Rationale
+**swap group**
+The set of model entries the backend may hold one of at a time. A request for a member evicts the resident model when it is a different member.
+_Avoid_: exclusivity group, one-resident set, pool
 
-Moving from Nix options to JSON with `options` sub-object because:
-1. JSON is language-agnostic and manually editable
-2. `displayName`/`hfRef` minimum object as requested; other settings grouped under `options`
-3. Automatic defaults when `options` fields are omitted; explicit override when set
-4. Supports the 120-200k ctxSize range with hardware-aware fallbacks
+**idle**
+No pending inference against the backend. A measure of what a *user* is doing, not of traffic: a session being read is not idle, however quiet the backend is.
+_Avoid_: inactive, dormant, cold, unused
+
+**ttl**
+Seconds of backend-side inactivity after which the resident model is unloaded. `0` never evicts. A failsafe floor only — the **idle** policy is owned elsewhere.
+_Avoid_: timeout, expiry, lease
+
+**lease**
+One opencode instance's published claim on the **resident model**: what it is doing, and how long since it last did anything local. A lease is a statement of intent, not proof of anything. A lease whose process no longer exists is **stale**, and a stale lease constrains nothing.
+_Avoid_: lock, claim, token, heartbeat
+
+**unload policy**
+The rule that decides when the **resident model** may be released, and the one question it answers: is it safe to unload right now? Every input it consults is published state, never a direct observation of another instance.
+_Avoid_: reaper, evictor, janitor, watchdog
+
+**settle delay**
+The interval a reported **idle** must stand still before it is believed. Exists because a turn's opening request is in flight before the session is marked busy.
+_Avoid_: debounce, grace period, hysteresis
+
+**heartbeat**
+A written record that the policy loaded and is still running. Distinguishes "the policy decided not to unload" from "the policy does not exist".
+_Avoid_: ping, keepalive, liveness probe
+
+**hardware profile**
+RTX 5090 (32 GB VRAM), 64 GB system RAM, Ryzen 9950X3D. Constrains the maximum feasible `ctxSize` for a given weight size and `cacheType` combination.
 
 ---
-*Updated from domain modeling session. User answers: Q1=displayName/url + options object, Q2=separate options object, Q3=120-200k context, Q4=mixed auto+override, Q5=open to recommendations. Last updated: 2026-09-28*
+
+Decisions are recorded in [`docs/adr/`](./adr/). Registry structure is in [`docs/llm-agent/registry.md`](./llm-agent/registry.md).

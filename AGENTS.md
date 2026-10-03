@@ -110,15 +110,19 @@ sudo nixos-rebuild switch --flake ~/config/nixos-flake/#two-b --show-trace
 ```bash
 nix develop .           # enter devShell
 ```
-Packages available: `nix`, `git`, `alejandra`, `shellcheck`.
+Packages available: `nix`, `git`, `alejandra`, `shellcheck`, `jq`, `bun`, `typescript`.
+- Run the llm-agent unload-policy tests: `bun test users/spyro/modules/productivity/llm-agent/policy`
+- Typecheck them: `cd users/spyro/modules/productivity/llm-agent/policy && tsc --noEmit -p tsconfig.json`
 - Format a file: `alejandra --format <file>` (repo is *not* currently alejandra-formatted — only format files you touch).
 - Check formatting: `alejandra --check <file>`.
 - Validate shell scripts: `shellcheck <file>`.
 
 ## Gotchas
 
-- The `opencode` wrapper script (in `users/spyro/modules/productivity/llm-agent/opencode-wrapper.sh`) is baked into the Nix store. Rebuild (`config build two-b`) before testing changes — see `llm-agent/TESTING.md`.
-- The wrapper stops `llama-swap` when the last opencode instance exits (EXIT trap), with a `llama-swap-watchdog` systemd user timer (30 s) as safety net and a 90 s startup grace. Instance detection matches the `/proc/PID/exe` basename, **not** `comm` — the kernel truncates `comm` to 15 chars and `opencode-desktop` is 16, so `pgrep -x`/`comm` never see the desktop app.
+- The `llama-swap` backend is a systemd user service (always on — see `docs/adr/0001-always-on-llama-swap-backend.md`). Check it with `systemctl --user status llama-swap`; reload its generated config with `systemctl --user restart llama-swap`. There is **no** `opencode` wrapper: `opencode` is the raw binary, so `--model`/`--cloud`/`opencode models` no longer exist (use `opencode --model llama.cpp/<key>`).
+- The unload policy is a single self-contained opencode plugin at `~/.config/opencode/plugins/llm-agent-unload.ts` — **not** split across files, because `home.file.<name>.text` flattens each file to its own store path and a relative import then resolves against `/nix/store` and fails silently. The seam is still authored separately in `policy/decision.ts` and spliced in at build time. Its heartbeat is `$XDG_STATE_HOME/llm-agent/heartbeat.json` (default `~/.local/state/llm-agent/`) — **a missing heartbeat means the plugin failed to load**, because opencode silently discards plugin load failures. Its thresholds are registry data: `unloadPolicy` in `models.json`. See `docs/adr/0002-plugin-owned-unload-policy.md` and `users/spyro/modules/productivity/llm-agent/TESTING.md`.
+- Two facts about the opencode plugin host, established by probing 1.18.31 and recorded in `policy/ambient.d.ts`: the plugin factory is called **more than once per process** (hence the singleton guard), and `chat.message` carries **no** model while `chat.params` does.
+- API keys in `env/*.env` are rendered at activation into `~/.config/environment.d/50-llm-agent.conf` (mode 600) so the systemd user manager passes them to GUI apps — a profile hook reaches the CLI but **not** `opencode-desktop`. Deliberately not `home.sessionVariables`, which would bake them into the Nix store. After changing a key, re-activate or restart the user manager.
 - `env/*.env` files are gitignored (API keys for figma/stitch). Never commit or read secrets into flake output.
 - `sudo` is actually `run0` with `enableSudoAlias` and `wheelNeedsPassword = true` — deploy commands prompt for a password and won't run unattended.
 - `opencode.json` is managed via Home Manager; symlinked into `~/.config/opencode/opencode.json`.

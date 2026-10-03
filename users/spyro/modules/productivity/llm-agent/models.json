@@ -3,6 +3,10 @@
     "provider": "llama.cpp",
     "name": "qwen3-30b-a3b"
   },
+  "unloadPolicy": {
+    "idleThresholdSeconds": 300,
+    "settleSeconds": 15
+  },
   "llama.cpp": {
     "qwen3.8-27b": {
       "displayName": "Qwen3.8 27B reasoning",
@@ -22,14 +26,15 @@
       }
     },
     "qwen3.8-27b-200k": {
+      "_comment": "q4_0 KV, not q8_0: at 200k context q8_0 overruns a 32 GB 5090 by ~6.6 GB, so the model can never load. Verified by matrix: 200k/q4_0 and 131k/q8_0 both load, 200k/q8_0 OOMs. See #55.",
       "displayName": "Qwen3.8 27B reasoning (200k opt-in)",
       "hfRef": "unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M",
       "options": {
         "ctxSize": 200000,
         "outputLimit": 16384,
         "gpuLayers": -1,
-        "cacheTypeK": "q8_0",
-        "cacheTypeV": "q8_0",
+        "cacheTypeK": "q4_0",
+        "cacheTypeV": "q4_0",
         "reasoningBudget": 2048,
         "ttl": 0,
         "mtpProfile": {

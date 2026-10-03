@@ -6,9 +6,7 @@
 }: let
   llamaHost = "127.0.0.1";
   llamaPort = "8080";
-  llamaHealthUrl = "http://${llamaHost}:${llamaPort}/health";
   envDir = "${config.home.homeDirectory}/config/nixos-flake/users/spyro/modules/productivity/llm-agent/env";
-  modelsJson = "${config.home.homeDirectory}/config/nixos-flake/users/spyro/modules/productivity/llm-agent/models.json";
 
   # Registry validation (ticket #35): models.json is the canonical model
   # registry. Malformed entries must fail `nix flake check` with a readable
@@ -20,6 +18,8 @@
   validMtpFields = ["enabled" "specType" "draftModel" "draftTokensMax" "draftCtxSize" "draftCacheTypeK" "draftCacheTypeV"];
 
   errIf = cond: msg: lib.optional (!cond) msg;
+
+  validEntryFields = [ "displayName" "hfRef" "options" "_comment" ];
 
   checkMtpProfile = name: profile:
     if !builtins.isAttrs profile
@@ -64,7 +64,17 @@
     if !builtins.isAttrs entry
     then ["model '${name}': entry must be an object"]
     else
-      errIf (entry ? displayName && builtins.isString entry.displayName) "model '${name}': 'displayName' is required and must be a string"
+      # `_comment` is documentation for a human reading models.json, and is
+      # deliberately not a model field. Allowed here so an entry can explain a
+      # constraint that the shape checks below cannot enforce.
+      # `errIf` reports when the condition is FALSE, so the *expected* shape goes
+      # in whole: absent is fine, present-but-not-a-string is not.
+      errIf (!(entry ? _comment) || builtins.isString entry._comment)
+        "model '${name}': '_comment', if present, must be a string"
+      ++ (map (f: "model '${name}': unknown field '${f}'")
+        (builtins.filter (f: !(builtins.elem f validEntryFields))
+          (builtins.attrNames entry)))
+      ++ errIf (entry ? displayName && builtins.isString entry.displayName) "model '${name}': 'displayName' is required and must be a string"
       ++ errIf (entry ? hfRef && builtins.isString entry.hfRef && builtins.match ".+/.+:.+" entry.hfRef != null) "model '${name}': 'hfRef' is required, must be a string like \"owner/repo:quant\""
       ++ (
         if entry ? options
@@ -103,10 +113,22 @@
             section = reg.${p} or null;
           in
             errIf (builtins.isAttrs section && builtins.hasAttr n section) "models.json: default model '${p}/${n}' is not registered"
+        )
+        ++ (let
+          policy = reg.unloadPolicy or null;
+          positiveInt = v: builtins.isInt v && v > 0;
+        in
+          if !builtins.isAttrs policy
+          then ["models.json: 'unloadPolicy' must be an object"]
+          else
+            # `errIf` reports when its condition is FALSE, so the expected shape
+            # is passed whole: `(has field) && (field is valid)`. Spelling this
+            # `!(has) || valid` — as checkOptions does — makes it a no-op for a
+            # missing field, which is the case worth catching here.
+            errIf ((policy ? idleThresholdSeconds) && positiveInt policy.idleThresholdSeconds) "models.json: 'unloadPolicy.idleThresholdSeconds' is required and must be a positive integer"
+            ++ errIf ((policy ? settleSeconds) && positiveInt policy.settleSeconds) "models.json: 'unloadPolicy.settleSeconds' is required and must be a positive integer"
+            ++ (map (f: "models.json: unknown unloadPolicy field '${f}'") (builtins.filter (f: !(builtins.elem f [ "idleThresholdSeconds" "settleSeconds" ])) (builtins.attrNames policy)))
         );
-
-  wrapperScript = builtins.readFile ./opencode-wrapper.sh;
-  watchdogScript = builtins.readFile ./llama-swap-watchdog.sh;
 
   # Opencode config generation (ticket #36): the provider block is derived
   # from the canonical registry. models.json stays the single source of
@@ -115,8 +137,12 @@
     if registryParse.success && builtins.isAttrs registryParse.value
     then registryParse.value
     else {};
+  # The provider whose models the backend fronts. The plugin needs the name to
+  # tell a local session from a cloud one, so it is generated rather than
+  # hardcoded in TypeScript where it could drift from the registry.
+  localProviderId = "llama.cpp";
   localModels = let
-    section = registry."llama.cpp" or null;
+    section = registry.${localProviderId} or null;
   in
     if builtins.isAttrs section
     then section
@@ -340,7 +366,7 @@
       };
     };
     provider = {
-      "llama.cpp" = {
+      ${localProviderId} = {
         npm = "@ai-sdk/openai-compatible";
         name = "llama server (local)";
         options = {
@@ -354,98 +380,205 @@
     plugin = ["opencode-parser"];
   };
 
-  opencodeWrapper = pkgs.writeShellScriptBin "opencode" (
-    lib.replaceStrings
-    [
-      "__env_dir__"
-      "__curl_bin__"
-      "__llama_swap_bin__"
-      "__swap_config__"
-      "__opencode_bin__"
-      "__llama_health_url__"
-      "__llama_host__"
-      "__llama_port__"
-        "__models_json__"
-        "__jq_bin__"
-        "__pgrep_bin__"
-        "__oc_name__"
-        "__oc_desktop_name__"
-        "__swap_name__"
-        "__log_file__"
-      ]
-      [
-        envDir
-        "${pkgs.curl}/bin/curl"
-        "${pkgs.llama-swap}/bin/llama-swap"
-        "${config.home.homeDirectory}/.config/llama-swap/config.yaml"
-        "${pkgs.opencode}/bin/opencode"
-        llamaHealthUrl
-        llamaHost
-        llamaPort
-        modelsJson
-        "${pkgs.jq}/bin/jq"
-        "${pkgs.procps}/bin/pgrep"
-        "opencode"
-        "opencode-desktop"
-        "llama-swap"
-        "/tmp/opencode-llama-swap.log"
-      ]
-      wrapperScript
+  swapConfigPath = "${config.home.homeDirectory}/.config/llama-swap/config.yaml";
+
+  # The backend is always on (ADR 0001), so the generated swap config is now
+  # load-bearing rather than incidental. Asserting its shape means a future
+  # edit that quietly drops the one-resident guarantee fails the build instead
+  # of loading two models into 32 GB of VRAM at inference time.
+  swapGroup = swapConfig.routing.router.settings.groups.local-llms;
+
+  # `errIf` takes the *expected* shape and reports when it does not hold.
+  generatedConfigErrors =
+    errIf ((swapConfig ? globalTTL) && builtins.isInt swapConfig.globalTTL)
+      "generated swap config must set an integer globalTTL"
+    ++ errIf ((swapConfig ? models) && builtins.isAttrs swapConfig.models)
+      "generated swap config must define models"
+    ++ errIf ((builtins.attrNames (swapConfig.models or {})) == (builtins.attrNames localModels))
+      "generated swap config models must match the registry entries exactly"
+    ++ (
+      if !builtins.isAttrs swapGroup
+      then ["generated swap config is missing the 'local-llms' swap group"]
+      else
+        errIf ((swapGroup ? swap) && swapGroup.swap == true)
+          "swap group 'local-llms' must set swap = true (one resident model at a time)"
+        ++ errIf ((swapGroup ? exclusive) && swapGroup.exclusive == true)
+          "swap group 'local-llms' must set exclusive = true"
+        ++ errIf ((swapGroup ? members) && builtins.isList swapGroup.members && (builtins.sort builtins.lessThan swapGroup.members) == (builtins.sort builtins.lessThan (builtins.attrNames localModels)))
+          "swap group 'local-llms' must list exactly the registry entries"
     );
 
-  # Periodic safety net: the wrapper's on-exit hook covers CLI instances, but
-  # it cannot fire for a SIGKILLed wrapper, and opencode-desktop never runs
-  # the wrapper at all. This timer-driven oneshot stops the backend whenever
-  # no opencode instance is left and the backend is past its startup grace.
-  llamaSwapWatchdog = pkgs.writeShellScriptBin "llama-swap-watchdog" (
-    lib.replaceStrings
-    [
-      "__pgrep_bin__"
-      "__oc_name__"
-      "__oc_desktop_name__"
-      "__swap_name__"
-      "__log_file__"
-    ]
-    [
-      "${pkgs.procps}/bin/pgrep"
-      "opencode"
-      "opencode-desktop"
-      "llama-swap"
-      "/tmp/opencode-llama-swap.log"
-    ]
-    watchdogScript
-  );
+  # An always-on backend with no authentication must never listen off-loopback.
+  loopbackHosts = [ "127.0.0.1" "localhost" "::1" "[::1]" ];
+  backendError = lib.optional (!(builtins.elem llamaHost loopbackHosts))
+    "llamaHost must be a loopback address: the backend has no authentication";
+
+  # The idle thresholds are registry data, not code constants (spec #34): the
+  # plugin reads them from this generated file rather than hard-coding them, so
+  # retuning is an edit to models.json.
+  unloadPolicy = registry.unloadPolicy or {};
+  # Read defensively: a malformed registry must surface as a readable
+  # assertion below, not as `attribute 'idleThresholdSeconds' missing` from
+  # whichever consumer happens to force this value first.
+  unloadPolicyConfig = {
+    idleThresholdSeconds = unloadPolicy.idleThresholdSeconds or null;
+    settleSeconds = unloadPolicy.settleSeconds or null;
+    backend = "http://${llamaHost}:${llamaPort}";
+    localProviderId = localProviderId;
+  };
+
+  # The plugin is deployed as ONE self-contained file in opencode's plugin
+  # directory, built by splicing `decision.ts` and `plugin.ts` together.
+  #
+  # This is not a stylistic choice. `home.file.<name>.text` compiles each file
+  # to its OWN store path, named after the target with separators stripped, not
+  # a directory tree. So a relative import from a deployed file resolves against
+  # the Nix store: an entry that re-exported `../llm-agent/plugin.js` looked for
+  # it beside itself in /nix/store, failed, and — because the loader discards
+  # the cause of a plugin load failure — the only symptom was a missing
+  # heartbeat. The deployed copy has to stand alone.
+  #
+  # The seam is still authored and tested as its own module; only the deployed
+  # artefact is a concatenation. The splice removes plugin.ts's import of the
+  # seam and asserts it was actually removed, so reformatting plugin.ts cannot
+  # silently leave a dead import behind (which would fail the same silent way).
+  decisionSource = builtins.readFile ./policy/decision.ts;
+  pluginSource = builtins.readFile ./policy/plugin.ts;
+
+  # The exact import block, asserted below so a reformat cannot invalidate it.
+  seamImport = ''
+    import {
+      isRepeatUnload,
+      shouldUnload,
+      type Decision,
+      type InflightEntry,
+      type Lease,
+      type LeaseSet,
+    } from "./decision.js"
+  '';
+  pluginWithoutSeamImport = builtins.replaceStrings [ "
+${seamImport}" ] [ "
+" ] pluginSource;
+
+  # opencode invokes EVERY function export in a plugin file as a plugin
+  # factory. The spliced seam brings `createUnloadPolicy`, `isRepeatUnload`
+  # and `shouldUnload` along as exports; called with a single plugin input,
+  # `createUnloadPolicy` throws on `config.idleThresholdSeconds` and poisons
+  # the whole file load — so the real entry never runs and the only symptom is
+  # a missing heartbeat. The deployed copy therefore exports exactly one
+  # function. Tests import the helpers from the repo sources, never from here.
+  deployedSource = builtins.replaceStrings
+    [ "export function createUnloadPolicy(" "export { isRepeatUnload, shouldUnload }" ]
+    [ "function createUnloadPolicy(" "" ]
+    (decisionSource + "
+" + pluginWithoutSeamImport);
+
+  pluginEntry = ''
+    // Generated by nixos-flake. Edit policy/decision.ts or policy/plugin.ts,
+    // never this file: it is their concatenation.
+    ${deployedSource}
+  '';
+
+
+  # Assert the *generated* file, not the registry it came from: the registry is
+  # already validated above, and what the plugin actually reads is this file. A
+  # broken derivation between the two is the failure worth catching.
+  policyErrors =
+    errIf (builtins.isInt unloadPolicyConfig.idleThresholdSeconds && unloadPolicyConfig.idleThresholdSeconds > 0)
+      "generated unload policy must carry a positive integer idle threshold"
+    ++ errIf (builtins.isInt unloadPolicyConfig.settleSeconds && unloadPolicyConfig.settleSeconds > 0)
+      "generated unload policy must carry a positive integer settle delay"
+    ++ errIf (builtins.isString unloadPolicyConfig.backend && builtins.match "http://(127\.0\.0\.1|localhost|\[::1\]):[0-9]+" unloadPolicyConfig.backend != null)
+      "generated unload policy must point the plugin at a loopback backend"
+    ++ errIf (unloadPolicyConfig.localProviderId == localProviderId)
+      "generated unload policy must name the registry's local provider, so the plugin and the registry cannot disagree about what is local"
+    # `errIf` reports when its condition is FALSE, so "must not contain" is
+    # spelled as the *absence* being the passing case.
+    ++ errIf (!(lib.hasInfix "decision.js" pluginEntry))
+      "the deployed plugin must not reference ./decision.js: it is spliced in, and a live import would resolve against the Nix store and fail to load silently"
+    ++ errIf (pluginWithoutSeamImport != pluginSource)
+      "the deployed plugin must still contain plugin.ts's source: the seam import it strips was reformatted, so the splice is no longer sound"
+    ++ errIf (lib.hasInfix "function shouldUnload" pluginEntry && lib.hasInfix "LlmAgentUnloadPolicy" pluginEntry)
+      "the deployed plugin must carry both the decision seam and the plugin entry"
+    ++ errIf (!(lib.hasInfix "export function" pluginEntry) && !(lib.hasInfix "export {" pluginEntry))
+      "the deployed plugin must export exactly one function: opencode invokes every function export as a plugin factory, and a second one throws on its missing config and poisons the whole file load";
+
+
+  # API keys live in a gitignored env dir and must never reach the Nix store,
+  # so they are rendered at activation time into ~/.config/environment.d/,
+  # which the systemd user manager reads for every unit it starts — including
+  # the opencode-desktop sidecar, which is launched by the desktop session
+  # rather than from a login shell. A profile hook alone would reach the CLI
+  # but not the desktop app, which is the one front-end that cannot be relied
+  # on to inherit from a shell.
+  # Fail loudly if something else already owns the port, rather than letting the
+  # unit crash-loop on a bind error.
+  preflight = pkgs.writeShellScript "llama-swap-preflight" ''
+    if ${pkgs.procps}/bin/pgrep -f "(^|/)llama-swap( |$)" >/dev/null 2>&1; then
+      echo "llama-swap is already running; stop it before starting the service." >&2
+      ${pkgs.procps}/bin/pgrep -af "(^|/)llama-swap( |$)" >&2 || true
+      exit 1
+    fi
+  '';
+
+  envActivation = pkgs.writeShellScript "llm-agent-env-activation" ''
+    target="$HOME/.config/environment.d/50-llm-agent.conf"
+    mkdir -p "$(dirname "$target")"
+    if [ -d "${envDir}" ]; then
+      cat "${envDir}"/*.env >"$target" 2>/dev/null || : >"$target"
+    else
+      : >"$target"
+    fi
+    chmod 600 "$target"
+  '';
  in {
    home.packages = [
      pkgs.llama-cpp
      pkgs.llama-swap
-     opencodeWrapper
+     pkgs.opencode
      pkgs.opencode-desktop
      pkgs.opencode-claude-auth
    ];
 
-   systemd.user.services."llama-swap-watchdog" = {
-     Unit.Description = "Stop the llama-swap backend when no opencode instances remain";
-     Service = {
-       Type = "oneshot";
-       ExecStart = "${llamaSwapWatchdog}/bin/llama-swap-watchdog";
+   # The backend is always on (ADR 0001). It costs ~10 MB and a listening
+   # socket; the resource that matters is the resident model, which is managed
+   # separately. Making it unconditional is what lets opencode-desktop select a
+   # local model at all — it forks a bundled sidecar and never executes anything
+   # from PATH, so a demand-start wrapper could never be triggered by it.
+   systemd.user.services.llama-swap = {
+     Unit = {
+       Description = "llama-swap backend for local models";
+       After = [ "network-online.target" ];
+       Wants = [ "network-online.target" ];
      };
-   };
+Service = {
+      Type = "exec";
+      # A llama-swap left over from the demand-start era would hold the port
+      # and make this unit crash-loop forever. Fail once with a clear message
+      # instead of retrying silently.
+      ExecStartPre = "${preflight}";
+      ExecStart = "${pkgs.llama-swap}/bin/llama-swap -config ${swapConfigPath} -listen ${llamaHost}:${llamaPort}";
+      Restart = "on-failure";
+      RestartSec = "2s";
+    };
+    Install.WantedBy = [ "default.target" ];
+  };
 
-   systemd.user.timers."llama-swap-watchdog" = {
-     Unit.Description = "Periodically run the llama-swap watchdog";
-     Timer = {
-       OnBootSec = "30s";
-       OnUnitActiveSec = "30s";
-     };
-     Install.WantedBy = [ "timers.target" ];
-   };
+  # environment.d is read when the user manager starts, so the new values only
+  # reach units started after the reload. Restarting the manager is what makes
+  # them visible to GUI apps launched afterwards.
+  home.activation.llamaAgentEnv = lib.hm.dag.entryAfter [ "home-manager-files" ] ''
+    install -Dm600 ${envActivation} "$HOME/.config/environment.d/.llm-agent-activation"
+    HOME="$HOME" ${envActivation}
+    systemctl --user daemon-reload 2>/dev/null || true
+  '';
 
   home.file.".config/opencode/opencode.json".text = builtins.toJSON opencodeConfig;
   home.file.".config/opencode/AGENTS.md".source = ./AGENTS.md;
-  # The hand-maintained swap config is retired; backupFileExtension keeps a
-  # reversible copy of the existing file on first deploy.
   home.file.".config/llama-swap/config.yaml".text = builtins.toJSON swapConfig;
+  home.file.".config/llama-swap/unload-policy.json".text = builtins.toJSON unloadPolicyConfig;
+
+  home.file.".config/opencode/plugins/llm-agent-unload.ts".text = pluginEntry;
 
   assertions =
     map
@@ -453,5 +586,9 @@
       assertion = false;
       message = "llm-agent ${message}";
     })
-    registryErrors;
+    (registryErrors ++ generatedConfigErrors ++ backendError ++ policyErrors)
+    ++ (lib.optional (!(config.systemd.user.services ? llama-swap)) {
+      assertion = false;
+      message = "llm-agent the always-on llama-swap service must be defined";
+    });
 }
