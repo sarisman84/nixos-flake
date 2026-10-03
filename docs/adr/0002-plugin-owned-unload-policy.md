@@ -2,6 +2,8 @@
 
 llama-swap can unload an idle **resident model** itself via per-model `ttl` / `globalTTL`. We deliberately do not use it as the primary mechanism. A systemd user service owns the backend (see `0001-always-on-llama-swap-backend.md`), and an opencode plugin owns when the resident model is unloaded. `globalTTL` is set to 1800 s as a failsafe floor only.
 
+> **Status: decided, not implemented.** The plugin, the leases and the heartbeat do not exist yet; `globalTTL` is still `0` and unload is manual. Tracked in #49–#53. This ADR records the decision so the floor is not later mistaken for an oversight.
+
 ## Considered options
 
 - **llama-swap `ttl` as the primary mechanism (rejected).** It measures *HTTP* inactivity against the backend. An opencode session sitting idle with a local model selected — you are reading the output — still looks idle to it, so the model is unloaded while you are mid-conversation. It also has no notion of "a cloud model is selected", which is a state only opencode knows about.

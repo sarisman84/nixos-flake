@@ -33,7 +33,7 @@ The `<model key>` is the **identity on the wire**: it becomes the `model` field 
 | `cacheType` | Shorthand setting both | — |
 | `reasoningBudget` | Thinking-token cap; `null` = server default | — |
 | `templateOverride` | Chat template file | — |
-| `ttl` | Backend-side idle eviction, seconds. `0` = never. Failsafe only | inherit `globalTTL` |
+| `ttl` | Backend-side idle eviction, seconds. `0` = never. Failsafe only, set by the unload policy | `120` |
 | `mtpProfile` | Multi-Token Prediction tuning; speed XOR context, never implicit | off |
 | `extraArgs` | Raw `llama-server` flags | — |
 
@@ -47,5 +47,10 @@ The `<model key>` is the **identity on the wire**: it becomes the `model` field 
 | `~/.config/opencode/opencode.json` → `model` | `default` |
 | `~/.config/llama-swap/config.yaml` → `models` | `llama.cpp` entries; `options` → `llama-server` argv, `ttl` → per-model TTL |
 | `~/.config/llama-swap/config.yaml` → `routing` | one **swap group** over all `llama.cpp` keys, one resident at a time |
+
+`config.yaml` is emitted with `builtins.toJSON`. JSON is a subset of YAML, so the
+result is valid YAML, but do not expect YAML formatting or comments in the
+generated file. Its shape is asserted by `nix flake check` — the one-resident
+guarantee is a build-time check, not a runtime hope.
 
 Adding a model means adding one entry here and rebuilding. No other file needs editing.

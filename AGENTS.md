@@ -110,7 +110,7 @@ sudo nixos-rebuild switch --flake ~/config/nixos-flake/#two-b --show-trace
 ```bash
 nix develop .           # enter devShell
 ```
-Packages available: `nix`, `git`, `alejandra`, `shellcheck`.
+Packages available: `nix`, `git`, `alejandra`, `shellcheck`, `jq`.
 - Format a file: `alejandra --format <file>` (repo is *not* currently alejandra-formatted — only format files you touch).
 - Check formatting: `alejandra --check <file>`.
 - Validate shell scripts: `shellcheck <file>`.
@@ -118,7 +118,7 @@ Packages available: `nix`, `git`, `alejandra`, `shellcheck`.
 ## Gotchas
 
 - The `llama-swap` backend is a systemd user service (always on — see `docs/adr/0001-always-on-llama-swap-backend.md`). Check it with `systemctl --user status llama-swap`; reload its generated config with `systemctl --user restart llama-swap`. There is **no** `opencode` wrapper: `opencode` is the raw binary, so `--model`/`--cloud`/`opencode models` no longer exist (use `opencode --model llama.cpp/<key>`).
-- API keys in `env/*.env` are sourced into the **login session** via `programs.bash.profileExtra` — deliberately not `home.sessionVariables`, which would bake them into the Nix store. New login shells pick up key changes; an existing shell needs `exec bash -l` or a re-source.
+- API keys in `env/*.env` are rendered at activation into `~/.config/environment.d/50-llm-agent.conf` (mode 600) so the systemd user manager passes them to GUI apps — a profile hook reaches the CLI but **not** `opencode-desktop`. Deliberately not `home.sessionVariables`, which would bake them into the Nix store. After changing a key, re-activate or restart the user manager.
 - `env/*.env` files are gitignored (API keys for figma/stitch). Never commit or read secrets into flake output.
 - `sudo` is actually `run0` with `enableSudoAlias` and `wheelNeedsPassword = true` — deploy commands prompt for a password and won't run unattended.
 - `opencode.json` is managed via Home Manager; symlinked into `~/.config/opencode/opencode.json`.

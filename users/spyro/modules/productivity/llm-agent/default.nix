@@ -6,9 +6,7 @@
 }: let
   llamaHost = "127.0.0.1";
   llamaPort = "8080";
-  llamaHealthUrl = "http://${llamaHost}:${llamaPort}/health";
   envDir = "${config.home.homeDirectory}/config/nixos-flake/users/spyro/modules/productivity/llm-agent/env";
-  modelsJson = "${config.home.homeDirectory}/config/nixos-flake/users/spyro/modules/productivity/llm-agent/models.json";
 
   # Registry validation (ticket #35): models.json is the canonical model
   # registry. Malformed entries must fail `nix flake check` with a readable
@@ -353,20 +351,63 @@
 
   swapConfigPath = "${config.home.homeDirectory}/.config/llama-swap/config.yaml";
 
+  # The backend is always on (ADR 0001), so the generated swap config is now
+  # load-bearing rather than incidental. Asserting its shape means a future
+  # edit that quietly drops the one-resident guarantee fails the build instead
+  # of loading two models into 32 GB of VRAM at inference time.
+  swapGroup = swapConfig.routing.router.settings.groups.local-llms;
+
+  # `errIf` takes the *expected* shape and reports when it does not hold.
+  generatedConfigErrors =
+    errIf ((swapConfig ? globalTTL) && builtins.isInt swapConfig.globalTTL)
+      "generated swap config must set an integer globalTTL"
+    ++ errIf ((swapConfig ? models) && builtins.isAttrs swapConfig.models)
+      "generated swap config must define models"
+    ++ errIf ((builtins.attrNames (swapConfig.models or {})) == (builtins.attrNames localModels))
+      "generated swap config models must match the registry entries exactly"
+    ++ (
+      if !builtins.isAttrs swapGroup
+      then ["generated swap config is missing the 'local-llms' swap group"]
+      else
+        errIf ((swapGroup ? swap) && swapGroup.swap == true)
+          "swap group 'local-llms' must set swap = true (one resident model at a time)"
+        ++ errIf ((swapGroup ? exclusive) && swapGroup.exclusive == true)
+          "swap group 'local-llms' must set exclusive = true"
+        ++ errIf ((swapGroup ? members) && builtins.isList swapGroup.members && (builtins.sort builtins.lessThan swapGroup.members) == (builtins.sort builtins.lessThan (builtins.attrNames localModels)))
+          "swap group 'local-llms' must list exactly the registry entries"
+    );
+
+  # An always-on backend with no authentication must never listen off-loopback.
+  loopbackHosts = [ "127.0.0.1" "localhost" "::1" "[::1]" ];
+  backendError = lib.optional (!(builtins.elem llamaHost loopbackHosts))
+    "llamaHost must be a loopback address: the backend has no authentication";
+
   # API keys live in a gitignored env dir and must never reach the Nix store,
-  # so they are sourced into the login session at runtime rather than declared
-  # as session variables. opencode-desktop imports the login-shell environment,
-  # so both front-ends see them.
-  envScript = pkgs.writeShellScript "source-llm-agent-env" ''
-    if [ -d "${envDir}" ]; then
-      for env_file in "${envDir}"/*.env; do
-        [ -e "$env_file" ] || continue
-        set -a
-        . "$env_file"
-        set +a
-      done
-      unset env_file
+  # so they are rendered at activation time into ~/.config/environment.d/,
+  # which the systemd user manager reads for every unit it starts — including
+  # the opencode-desktop sidecar, which is launched by the desktop session
+  # rather than from a login shell. A profile hook alone would reach the CLI
+  # but not the desktop app, which is the one front-end that cannot be relied
+  # on to inherit from a shell.
+  # Fail loudly if something else already owns the port, rather than letting the
+  # unit crash-loop on a bind error.
+  preflight = pkgs.writeShellScript "llama-swap-preflight" ''
+    if ${pkgs.procps}/bin/pgrep -f "(^|/)llama-swap( |$)" >/dev/null 2>&1; then
+      echo "llama-swap is already running; stop it before starting the service." >&2
+      ${pkgs.procps}/bin/pgrep -af "(^|/)llama-swap( |$)" >&2 || true
+      exit 1
     fi
+  '';
+
+  envActivation = pkgs.writeShellScript "llm-agent-env-activation" ''
+    target="$HOME/.config/environment.d/50-llm-agent.conf"
+    mkdir -p "$(dirname "$target")"
+    if [ -d "${envDir}" ]; then
+      cat "${envDir}"/*.env >"$target" 2>/dev/null || : >"$target"
+    else
+      : >"$target"
+    fi
+    chmod 600 "$target"
   '';
  in {
    home.packages = [
@@ -388,23 +429,30 @@
        After = [ "network-online.target" ];
        Wants = [ "network-online.target" ];
      };
-     Service = {
-       Type = "exec";
-       ExecStart = "${pkgs.llama-swap}/bin/llama-swap -config ${swapConfigPath} -listen ${llamaHost}:${llamaPort}";
-       Restart = "on-failure";
-       RestartSec = "2s";
-     };
-     Install.WantedBy = [ "default.target" ];
-   };
+Service = {
+      Type = "exec";
+      # A llama-swap left over from the demand-start era would hold the port
+      # and make this unit crash-loop forever. Fail once with a clear message
+      # instead of retrying silently.
+      ExecStartPre = "${preflight}";
+      ExecStart = "${pkgs.llama-swap}/bin/llama-swap -config ${swapConfigPath} -listen ${llamaHost}:${llamaPort}";
+      Restart = "on-failure";
+      RestartSec = "2s";
+    };
+    Install.WantedBy = [ "default.target" ];
+  };
 
-  programs.bash.profileExtra = lib.mkAfter ''
-    [ -f "${envScript}" ] && . "${envScript}"
+  # environment.d is read when the user manager starts, so the new values only
+  # reach units started after the reload. Restarting the manager is what makes
+  # them visible to GUI apps launched afterwards.
+  home.activation.llamaAgentEnv = lib.hm.dag.entryAfter [ "home-manager-files" ] ''
+    install -Dm600 ${envActivation} "$HOME/.config/environment.d/.llm-agent-activation"
+    HOME="$HOME" ${envActivation}
+    systemctl --user daemon-reload 2>/dev/null || true
   '';
 
   home.file.".config/opencode/opencode.json".text = builtins.toJSON opencodeConfig;
   home.file.".config/opencode/AGENTS.md".source = ./AGENTS.md;
-  # The hand-maintained swap config is retired; backupFileExtension keeps a
-  # reversible copy of the existing file on first deploy.
   home.file.".config/llama-swap/config.yaml".text = builtins.toJSON swapConfig;
 
   assertions =
@@ -413,6 +461,9 @@
       assertion = false;
       message = "llm-agent ${message}";
     })
-    registryErrors
-    ++ lib.optional (llamaHost != "127.0.0.1") "llamaHost must be a loopback address: the backend has no authentication";
+    (registryErrors ++ generatedConfigErrors ++ backendError)
+    ++ (lib.optional (!(config.systemd.user.services ? llama-swap)) {
+      assertion = false;
+      message = "llm-agent the always-on llama-swap service must be defined";
+    });
 }

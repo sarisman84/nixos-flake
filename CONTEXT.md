@@ -54,7 +54,7 @@ _Avoid_: efficient model, small model, fast model, light model
 ### Runtime
 
 **backend**
-The long-lived proxy that fronts all local models and owns the local endpoint. Always up. Not the thing that costs resources.
+The long-lived process that fronts all local models and owns the local endpoint. Always up. Not the thing that costs resources.
 _Avoid_: server, proxy, daemon
 
 **resident model**
@@ -70,7 +70,7 @@ The set of model entries the backend may hold one of at a time. A request for a 
 _Avoid_: exclusivity group, one-resident set, pool
 
 **idle**
-No pending inference against the backend. Measured by opencode's view of session activity, not by the backend's request counter.
+No pending inference against the backend. A measure of what a *user* is doing, not of traffic: a session being read is not idle, however quiet the backend is.
 _Avoid_: inactive, dormant, cold, unused
 
 **ttl**
@@ -79,9 +79,6 @@ _Avoid_: timeout, expiry, lease
 
 **hardware profile**
 RTX 5090 (32 GB VRAM), 64 GB system RAM, Ryzen 9950X3D. Constrains the maximum feasible `ctxSize` for a given weight size and `cacheType` combination.
-
-**maxCtxSize**
-Maximum-context opt-in ceiling. `null` = no maximum profile.
 
 ---
 
