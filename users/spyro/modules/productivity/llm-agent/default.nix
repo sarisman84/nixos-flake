@@ -109,6 +109,10 @@
           if !builtins.isAttrs policy
           then ["models.json: 'unloadPolicy' must be an object"]
           else
+            # `errIf` reports when its condition is FALSE, so the expected shape
+            # is passed whole: `(has field) && (field is valid)`. Spelling this
+            # `!(has) || valid` — as checkOptions does — makes it a no-op for a
+            # missing field, which is the case worth catching here.
             errIf ((policy ? idleThresholdSeconds) && positiveInt policy.idleThresholdSeconds) "models.json: 'unloadPolicy.idleThresholdSeconds' is required and must be a positive integer"
             ++ errIf ((policy ? settleSeconds) && positiveInt policy.settleSeconds) "models.json: 'unloadPolicy.settleSeconds' is required and must be a positive integer"
             ++ (map (f: "models.json: unknown unloadPolicy field '${f}'") (builtins.filter (f: !(builtins.elem f [ "idleThresholdSeconds" "settleSeconds" ])) (builtins.attrNames policy)))
@@ -121,8 +125,12 @@
     if registryParse.success && builtins.isAttrs registryParse.value
     then registryParse.value
     else {};
+  # The provider whose models the backend fronts. The plugin needs the name to
+  # tell a local session from a cloud one, so it is generated rather than
+  # hardcoded in TypeScript where it could drift from the registry.
+  localProviderId = "llama.cpp";
   localModels = let
-    section = registry."llama.cpp" or null;
+    section = registry.${localProviderId} or null;
   in
     if builtins.isAttrs section
     then section
@@ -346,7 +354,7 @@
       };
     };
     provider = {
-      "llama.cpp" = {
+      ${localProviderId} = {
         npm = "@ai-sdk/openai-compatible";
         name = "llama server (local)";
         options = {
@@ -404,6 +412,7 @@
     idleThresholdSeconds = unloadPolicy.idleThresholdSeconds or null;
     settleSeconds = unloadPolicy.settleSeconds or null;
     backend = "http://${llamaHost}:${llamaPort}";
+    localProviderId = localProviderId;
   };
 
   # The plugin is deployed as a single entry file in opencode's plugin
@@ -416,18 +425,18 @@
     export { LlmAgentUnloadPolicy } from "../llm-agent/plugin.js"
   '';
 
-  policyFiles = {
-    "decision.ts" = ./policy/decision.ts;
-    "plugin.ts" = ./policy/plugin.ts;
-  };
-
+  # Assert the *generated* file, not the registry it came from: the registry is
+  # already validated above, and what the plugin actually reads is this file. A
+  # broken derivation between the two is the failure worth catching.
   policyErrors =
     errIf (builtins.isInt unloadPolicyConfig.idleThresholdSeconds && unloadPolicyConfig.idleThresholdSeconds > 0)
       "generated unload policy must carry a positive integer idle threshold"
     ++ errIf (builtins.isInt unloadPolicyConfig.settleSeconds && unloadPolicyConfig.settleSeconds > 0)
       "generated unload policy must carry a positive integer settle delay"
-    ++ errIf ((builtins.attrNames policyFiles) == [ "decision.ts" "plugin.ts" ])
-      "the unload policy must ship its decision module and its plugin entry";
+    ++ errIf (builtins.isString unloadPolicyConfig.backend && builtins.match "http://(127\.0\.0\.1|localhost|\[::1\]):[0-9]+" unloadPolicyConfig.backend != null)
+      "generated unload policy must point the plugin at a loopback backend"
+    ++ errIf (unloadPolicyConfig.localProviderId == localProviderId)
+      "generated unload policy must name the registry's local provider, so the plugin and the registry cannot disagree about what is local";
 
   # API keys live in a gitignored env dir and must never reach the Nix store,
   # so they are rendered at activation time into ~/.config/environment.d/,
@@ -504,8 +513,8 @@ Service = {
   home.file.".config/llama-swap/unload-policy.json".text = builtins.toJSON unloadPolicyConfig;
 
   home.file.".config/opencode/plugins/llm-agent-unload.ts".text = pluginEntry;
-  home.file.".config/opencode/llm-agent/decision.ts".source = policyFiles."decision.ts";
-  home.file.".config/opencode/llm-agent/plugin.ts".source = policyFiles."plugin.ts";
+  home.file.".config/opencode/llm-agent/decision.ts".source = ./policy/decision.ts;
+  home.file.".config/opencode/llm-agent/plugin.ts".source = ./policy/plugin.ts;
 
   assertions =
     map

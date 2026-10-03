@@ -78,8 +78,12 @@ Seconds of backend-side inactivity after which the resident model is unloaded. `
 _Avoid_: timeout, expiry, lease
 
 **lease**
-One opencode instance's published claim on the **resident model**: what it is doing, and how long since it last did anything local. A lease is a statement of intent, not proof of anything.
+One opencode instance's published claim on the **resident model**: what it is doing, and how long since it last did anything local. A lease is a statement of intent, not proof of anything. A lease whose process no longer exists is **stale**, and a stale lease constrains nothing.
 _Avoid_: lock, claim, token, heartbeat
+
+**unload policy**
+The rule that decides when the **resident model** may be released, and the one question it answers: is it safe to unload right now? Every input it consults is published state, never a direct observation of another instance.
+_Avoid_: reaper, evictor, janitor, watchdog
 
 **settle delay**
 The interval a reported **idle** must stand still before it is believed. Exists because a turn's opening request is in flight before the session is marked busy.

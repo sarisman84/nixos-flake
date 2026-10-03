@@ -1,7 +1,7 @@
 import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
-import { isRepeatUnload, shouldUnload, type InflightEntry, type Lease, type LeaseSet } from "./decision.js"
+import { isRepeatUnload, shouldUnload, type Decision, type InflightEntry, type Lease, type LeaseSet } from "./decision.js"
 
 /**
  * The plugin half of the unload policy.
@@ -40,6 +40,8 @@ type PolicyConfig = {
   idleThresholdSeconds: number
   settleSeconds: number
   backend: string
+  /** Provider id whose models are served locally. Owned by the registry. */
+  localProviderId: string
 }
 
 type SessionState = {
@@ -50,6 +52,12 @@ type SessionState = {
   model: string | null
 }
 
+/**
+ * Only the event shapes this policy reads.
+ *
+ * `properties.sessionID` is top-level for message events even though the
+ * published SDK types nest it under `info`/`part`; probed, not assumed.
+ */
 type OpencodeEvent = {
   type: string
   properties?: {
@@ -74,6 +82,8 @@ type Hooks = {
   event?: (input: { event: OpencodeEvent }) => Promise<void>
   "chat.params"?: (input: ChatParamsInput) => Promise<void>
   dispose?: () => Promise<void>
+  /** Test seam: one evaluation of the policy. Not called by opencode. */
+  __tick?: () => Promise<{ decision: Decision; attempted: boolean }>
 }
 
 // --- paths -----------------------------------------------------------------
@@ -306,7 +316,10 @@ export function createUnloadPolicy(
     }
   }
 
-  async function tick(): Promise<void> {
+  /** What one evaluation decided and did. Lets a test assert the action, not just the intent. */
+  type TickResult = { decision: Decision; attempted: boolean }
+
+  async function tick(): Promise<TickResult> {
     const at = now()
     writeHeartbeat()
     publishLease()
@@ -322,17 +335,23 @@ export function createUnloadPolicy(
       log("debug", "unload decision", { unload: decision.unload, reason: decision.reason })
     }
 
-    if (!decision.unload) return
+    if (!decision.unload) return { decision, attempted: false }
     // One idle epoch yields one unload attempt, however many times the session
     // reports idle or however often the timer fires.
-    if (isRepeatUnload(lastUnloadAt, leaseSet, at)) return
+    if (isRepeatUnload(lastUnloadAt, leaseSet)) return { decision, attempted: false }
 
     lastUnloadAt = at
     await unload()
+    return { decision, attempted: true }
   }
 
+  // Exposed on the hooks so the unload path — the one place that decides to
+  // spend an action on the outside world — can be driven directly by a test
+  // instead of being only reachable on a five-second timer.
+  const runTick = tick
+
   const timer = setInterval(() => {
-    void tick()
+    void runTick()
   }, TICK_MS)
   timer.unref()
 
@@ -351,6 +370,8 @@ export function createUnloadPolicy(
   })
 
   return {
+    __tick: runTick,
+
     event: async ({ event }) => {
       const at = now()
       if (event.type === "session.status") {
@@ -399,7 +420,7 @@ export function createUnloadPolicy(
       const providerID = input.model?.providerID
       if (!providerID) return
       touchSession(input.sessionID, (state) => {
-        state.local = providerID === "llama.cpp"
+        state.local = providerID === config.localProviderId
         state.model = input.model?.id ?? null
       })
       const state = sessions.get(input.sessionID)
@@ -421,12 +442,10 @@ export function createUnloadPolicy(
   }
 }
 
-type Singleton = { hooks: Hooks; instanceId: string }
-
 export const LlmAgentUnloadPolicy = async (input: PluginInput): Promise<Hooks> => {
-  const globals = globalThis as unknown as Record<symbol, Singleton | undefined>
+  const globals = globalThis as unknown as Record<symbol, Hooks | undefined>
   const existing = globals[SINGLETON]
-  if (existing) return existing.hooks
+  if (existing) return existing
 
   let config: PolicyConfig
   try {
@@ -445,6 +464,6 @@ export const LlmAgentUnloadPolicy = async (input: PluginInput): Promise<Hooks> =
 
   const instanceId = `${process.pid}.${Math.random().toString(36).slice(2, 10)}`
   const hooks = createUnloadPolicy(input, config, instanceId)
-  globals[SINGLETON] = { hooks, instanceId }
+  globals[SINGLETON] = hooks
   return hooks
 }

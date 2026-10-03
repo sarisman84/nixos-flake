@@ -1,11 +1,27 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test"
-import { mkdtempSync, readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs"
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { LlmAgentUnloadPolicy, createUnloadPolicy } from "./plugin.js"
 
 const SINGLETON = Symbol.for("llm-agent.unload-policy.singleton")
-const CONFIG = { idleThresholdSeconds: 300, settleSeconds: 15, backend: "http://127.0.0.1:8080" }
+const CONFIG = {
+  idleThresholdSeconds: 300,
+  settleSeconds: 15,
+  backend: "http://127.0.0.1:8080",
+  localProviderId: "llama.cpp",
+}
+
+/** Counts POSTs to the unload endpoint without touching a real backend. */
+let unloadCalls = 0
+const realFetch = globalThis.fetch
+globalThis.fetch = (async (url: string) => {
+  if (String(url).endsWith("/api/models/unload")) {
+    unloadCalls += 1
+    return { ok: true, status: 200 }
+  }
+  return realFetch(url)
+}) as typeof fetch
 
 let root: string
 const logged: { level: string; message: string }[] = []
@@ -47,6 +63,7 @@ beforeEach(() => {
   mkdirSync(join(root, ".config", "llama-swap"), { recursive: true })
   writeFileSync(policyPath(), JSON.stringify(CONFIG))
   logged.length = 0
+  unloadCalls = 0
   delete (globalThis as Record<symbol, unknown>)[SINGLETON]
 })
 
@@ -174,6 +191,8 @@ describe("model selection", () => {
   })
 
   test("a cloud session leaves local activity untouched on selection", async () => {
+    // Cloud work must not hold the resident model resident for the length of a
+    // conversation that never used it.
     const hooks = await LlmAgentUnloadPolicy({ client, directory: root })
     await hooks["chat.params"]!({ sessionID: "s1", model: { providerID: "opencode", id: "big-pickle" } })
     expect(readLease(leases()[0]).lastLocalActivityAt).toBe(null)
@@ -181,8 +200,10 @@ describe("model selection", () => {
   })
 
   test("a cloud session going busy does not refresh local activity", async () => {
-    // The cloud path and the busy path are separate guards, and both have to
-    // hold: a busy cloud session must not hold the resident model either.
+    // Both guards have to hold: the model-selection path and the status path.
+    // This stops the lease being *refreshed*. Note that a busy session still
+    // blocks an unload outright via `lease-busy`; releasing on a cloud switch
+    // while the session stays open is #51's work, not this ticket's.
     const hooks = await LlmAgentUnloadPolicy({ client, directory: root })
     await hooks["chat.params"]!({ sessionID: "s1", model: { providerID: "opencode", id: "big-pickle" } })
     await hooks.event!({
@@ -214,6 +235,121 @@ describe("model selection", () => {
     expect(readLease("delta.json").lastLocalActivityAt).toBe(clock)
     expect(readLease("delta.json").lastLocalActivityAt === before).toBe(false)
     await hooks.dispose!()
+  })
+})
+
+describe("the unload path", () => {
+  /** Drives a session from busy to idle, then far enough past the threshold. */
+  async function idleLocalSession(hooks: any, clock: { now: number }): Promise<void> {
+    await hooks["chat.params"]({ sessionID: "s1", model: { providerID: "llama.cpp", id: "gpt-oss-20b" } })
+    await hooks.event({ event: { type: "session.status", properties: { sessionID: "s1", status: { type: "busy" } } } })
+    clock.now += 10_000
+    await hooks.event({ event: { type: "session.status", properties: { sessionID: "s1", status: { type: "idle" } } } })
+    clock.now += 400_000
+  }
+
+  test("does not unload while the session is mid-generation", async () => {
+    const clock = { now: 1_000_000 }
+    const hooks = createUnloadPolicy({ client, directory: root }, CONFIG, "busy", () => clock.now) as any
+    await hooks["chat.params"]({ sessionID: "s1", model: { providerID: "llama.cpp", id: "gpt-oss-20b" } })
+    await hooks.event({ event: { type: "session.status", properties: { sessionID: "s1", status: { type: "busy" } } } })
+    // Far past the threshold, but still generating.
+    clock.now += 400_000
+    const result = await hooks.__tick()
+    expect(result.decision).toEqual({ unload: false, reason: "lease-busy" })
+    expect(unloadCalls).toBe(0)
+    await hooks.dispose()
+  })
+
+  test("unloads once a session has been idle past the threshold", async () => {
+    const clock = { now: 1_000_000 }
+    const hooks = createUnloadPolicy({ client, directory: root }, CONFIG, "idle", () => clock.now) as any
+    await idleLocalSession(hooks, clock)
+    const result = await hooks.__tick()
+    expect(result.decision.unload).toBe(true)
+    expect(result.attempted).toBe(true)
+    expect(unloadCalls).toBe(1)
+    await hooks.dispose()
+  })
+
+  test("repeated idle publications for one turn still produce one attempt", async () => {
+    // The acceptance criterion in full: a failed or cancelled turn reports idle
+    // more than once, and the timer fires repeatedly on top of that.
+    const clock = { now: 1_000_000 }
+    const hooks = createUnloadPolicy({ client, directory: root }, CONFIG, "dup2", () => clock.now) as any
+    await idleLocalSession(hooks, clock)
+
+    await hooks.__tick()
+    for (let i = 0; i < 5; i++) {
+      clock.now += 5_000
+      await hooks.event({ event: { type: "session.status", properties: { sessionID: "s1", status: { type: "idle" } } } })
+      await hooks.__tick()
+    }
+    expect(unloadCalls).toBe(1)
+    await hooks.dispose()
+  })
+
+  test("a new turn after an unload earns a fresh attempt", async () => {
+    const clock = { now: 1_000_000 }
+    const hooks = createUnloadPolicy({ client, directory: root }, CONFIG, "again", () => clock.now) as any
+    await idleLocalSession(hooks, clock)
+    await hooks.__tick()
+    expect(unloadCalls).toBe(1)
+
+    clock.now += 60_000
+    await hooks["chat.params"]({ sessionID: "s1", model: { providerID: "llama.cpp", id: "gpt-oss-20b" } })
+    await idleLocalSession(hooks, clock)
+    await hooks.__tick()
+    expect(unloadCalls).toBe(2)
+    await hooks.dispose()
+  })
+
+  test("the settle delay refuses the first evaluation after a turn ends", async () => {
+    const clock = { now: 1_000_000 }
+    const hooks = createUnloadPolicy({ client, directory: root }, CONFIG, "settle", () => clock.now) as any
+    await hooks["chat.params"]({ sessionID: "s1", model: { providerID: "llama.cpp", id: "gpt-oss-20b" } })
+    await hooks.event({ event: { type: "session.status", properties: { sessionID: "s1", status: { type: "busy" } } } })
+    clock.now += 400_000 // idle, but long past the threshold
+    await hooks.event({ event: { type: "session.status", properties: { sessionID: "s1", status: { type: "idle" } } } })
+
+    const first = await hooks.__tick()
+    expect(first.decision).toEqual({ unload: false, reason: "lease-settling" })
+    expect(unloadCalls).toBe(0)
+
+    clock.now += CONFIG.settleSeconds * 1000
+    const second = await hooks.__tick()
+    expect(second.decision.unload).toBe(true)
+    expect(unloadCalls).toBe(1)
+    await hooks.dispose()
+  })
+
+  test("a corrupt sibling lease is an unreadable set, not a dead one", async () => {
+    // The dangerous case is not a missing directory but a sibling's lease that
+    // cannot be parsed: treating it as absent would let one instance's bad
+    // write authorise unloading under another instance's feet.
+    const clock = { now: 1_000_000 }
+    const hooks = createUnloadPolicy({ client, directory: root }, CONFIG, "corrupt", () => clock.now) as any
+    await idleLocalSession(hooks, clock)
+    writeFileSync(join(root, ".local", "state", "llm-agent", "leases", "9999.zzz.json"), "{not json")
+
+    const result = await hooks.__tick()
+    expect(result.decision).toEqual({ unload: false, reason: "lease-set-unreadable" })
+    expect(unloadCalls).toBe(0)
+    await hooks.dispose()
+  })
+
+  test("a lease claiming a busy sibling that no longer exists does not block", async () => {
+    const clock = { now: 1_000_000 }
+    const hooks = createUnloadPolicy({ client, directory: root }, CONFIG, "ghost", () => clock.now) as any
+    await idleLocalSession(hooks, clock)
+    writeFileSync(
+      join(root, ".local", "state", "llm-agent", "leases", "9999.ghost.json"),
+      JSON.stringify({ instanceId: "9999.ghost", pid: 999999, startedAt: clock.now - 900_000, lastLocalActivityAt: clock.now, busySince: clock.now, idleSince: null }),
+    )
+
+    const result = await hooks.__tick()
+    expect(result.decision.unload).toBe(true)
+    await hooks.dispose()
   })
 })
 

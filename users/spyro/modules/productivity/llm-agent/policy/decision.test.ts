@@ -190,19 +190,19 @@ describe("shouldUnload", () => {
 describe("isRepeatUnload", () => {
   test("is a repeat when nothing has happened locally since the last unload", () => {
     const idle = lease()
-    expect(isRepeatUnload(NOW - 30_000, readable(idle), NOW)).toBe(true)
+    expect(isRepeatUnload(NOW - 30_000, readable(idle))).toBe(true)
   })
 
   test("is not a repeat once a lease has recorded local activity since", () => {
     const resumed = lease({ lastLocalActivityAt: NOW - 1_000, idleSince: NOW - 1_000 })
-    expect(isRepeatUnload(NOW - 30_000, readable(resumed), NOW)).toBe(false)
+    expect(isRepeatUnload(NOW - 30_000, readable(resumed))).toBe(false)
   })
 
   test("is not a repeat when nothing has been unloaded yet", () => {
-    expect(isRepeatUnload(null, readable(lease()), NOW)).toBe(false)
+    expect(isRepeatUnload(null, readable(lease()))).toBe(false)
   })
 
   test("a repeat is not asserted from an unreadable lease set", () => {
-    expect(isRepeatUnload(NOW - 30_000, UNREADABLE, NOW)).toBe(false)
+    expect(isRepeatUnload(NOW - 30_000, UNREADABLE)).toBe(false)
   })
 })

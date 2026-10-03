@@ -100,9 +100,12 @@ export function shouldUnload(
   // nobody is using the model.
   if (live.length === 0) return refuse("no-live-lease")
 
-  if (inflight.length > 0) return refuse("inflight-present")
-
+  // Lease state is checked before the in-flight set: a busy session is the more
+  // specific and more actionable explanation, and reporting it avoids sending
+  // the reader to the backend for something opencode already knows.
   if (live.some((l) => l.busySince !== null)) return refuse("lease-busy")
+
+  if (inflight.length > 0) return refuse("inflight-present")
 
   // An instance that has never reported a session is unobserved, and an
   // unobserved instance is not trusted for `settleMs` after it starts: a
@@ -141,7 +144,7 @@ export function shouldUnload(
  * policy runs on a timer, so the same idle epoch is otherwise re-decided every
  * tick. One epoch yields one unload attempt.
  */
-export function isRepeatUnload(lastUnloadAt: number | null, leaseSet: LeaseSet, now: number): boolean {
+export function isRepeatUnload(lastUnloadAt: number | null, leaseSet: LeaseSet): boolean {
   if (lastUnloadAt === null) return false
   if (!leaseSet.readable) return false
   const live = leaseSet.leases.filter((l) => l.alive)

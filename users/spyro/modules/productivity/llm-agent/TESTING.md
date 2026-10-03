@@ -120,8 +120,9 @@ reach the plugin through the generated `~/.config/llama-swap/unload-policy.json`
 
 ```bash
 cat ~/.config/llama-swap/unload-policy.json      # thresholds actually in force
-cat ~/.local/state/llm-agent/heartbeat.json      # written when the plugin loads
-ls   ~/.local/state/llm-agent/leases/            # one lease per live instance
+state="${XDG_STATE_HOME:-$HOME/.local/state}/llm-agent"
+cat "$state/heartbeat.json"                      # written when the plugin loads
+ls   "$state/leases/"                            # one lease per live instance
 ```
 
 The heartbeat matters because opencode discards the cause of a plugin load
@@ -146,9 +147,9 @@ Reasons, all of which mean *do not unload* unless stated:
 | `lease-active` | some instance did local work within the threshold |
 | `lease-settling` | an idle observation is younger than the settle delay |
 | `lease-unobserved` | an instance started within the settle delay and has seen no session |
+| `no-live-lease` | the lease set was readable but nothing in it belongs to a live process |
 | `inflight-present` | the backend reported a request in flight |
 | `lease-set-unreadable` | the lease set could not be read — never reads as permission |
-| `no-live-lease` | the set was readable but nothing in it is alive |
 
 ### Verifying an unload
 
@@ -172,7 +173,7 @@ opencode:
 
 ```bash
 nix develop .
-bun test users/spyro/modules/productivity/llm-agent/policy   # 37 tests
+bun test users/spyro/modules/productivity/llm-agent/policy
 cd users/spyro/modules/productivity/llm-agent/policy && tsc --noEmit -p tsconfig.json
 ```
 

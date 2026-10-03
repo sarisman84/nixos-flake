@@ -10,6 +10,10 @@
  * plugin against the real binary, not read off documentation:
  *
  *   - `session.status` carries `{ sessionID, status: { type: "busy" | "idle" | "retry" } }`.
+ *   - `message.part.updated` / `message.updated` carry a **top-level** `sessionID`
+ *     alongside `part` / `info`. The published SDK types omit it, so this was
+ *     probed rather than assumed — reading `info.sessionID` instead is a
+ *     permanent no-op in production.
  *   - `chat.params` carries `model.providerID` / `model.id`.
  *   - `chat.message` does *not* carry a model — its `model` is absent, which is
  *     why model selection is read from `chat.params`.
@@ -41,19 +45,16 @@ declare module "node:fs" {
   export function readFileSync(path: string, encoding: "utf8"): string
   export function writeFileSync(path: string, data: string, options?: { mode?: number }): void
   export function renameSync(from: string, to: string): void
-  export function rmSync(path: string, options: { force?: boolean }): void
+  export function rmSync(path: string, options: { force?: boolean; recursive?: boolean }): void
 }
 
 declare module "node:os" {
+  export function homedir(): string
   export function tmpdir(): string
 }
 
 declare module "node:path" {
   export function join(...parts: string[]): string
-}
-
-declare module "node:os" {
-  export function homedir(): string
 }
 
 
