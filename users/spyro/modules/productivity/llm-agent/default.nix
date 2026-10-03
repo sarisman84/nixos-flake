@@ -19,6 +19,8 @@
 
   errIf = cond: msg: lib.optional (!cond) msg;
 
+  validEntryFields = [ "displayName" "hfRef" "options" "_comment" ];
+
   checkMtpProfile = name: profile:
     if !builtins.isAttrs profile
     then ["model '${name}': 'options.mtpProfile' must be an object"]
@@ -62,7 +64,17 @@
     if !builtins.isAttrs entry
     then ["model '${name}': entry must be an object"]
     else
-      errIf (entry ? displayName && builtins.isString entry.displayName) "model '${name}': 'displayName' is required and must be a string"
+      # `_comment` is documentation for a human reading models.json, and is
+      # deliberately not a model field. Allowed here so an entry can explain a
+      # constraint that the shape checks below cannot enforce.
+      # `errIf` reports when the condition is FALSE, so the *expected* shape goes
+      # in whole: absent is fine, present-but-not-a-string is not.
+      errIf (!(entry ? _comment) || builtins.isString entry._comment)
+        "model '${name}': '_comment', if present, must be a string"
+      ++ (map (f: "model '${name}': unknown field '${f}'")
+        (builtins.filter (f: !(builtins.elem f validEntryFields))
+          (builtins.attrNames entry)))
+      ++ errIf (entry ? displayName && builtins.isString entry.displayName) "model '${name}': 'displayName' is required and must be a string"
       ++ errIf (entry ? hfRef && builtins.isString entry.hfRef && builtins.match ".+/.+:.+" entry.hfRef != null) "model '${name}': 'hfRef' is required, must be a string like \"owner/repo:quant\""
       ++ (
         if entry ? options
