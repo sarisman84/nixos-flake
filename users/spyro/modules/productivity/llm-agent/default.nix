@@ -105,9 +105,6 @@
             errIf (builtins.isAttrs section && builtins.hasAttr n section) "models.json: default model '${p}/${n}' is not registered"
         );
 
-  wrapperScript = builtins.readFile ./opencode-wrapper.sh;
-  watchdogScript = builtins.readFile ./llama-swap-watchdog.sh;
-
   # Opencode config generation (ticket #36): the provider block is derived
   # from the canonical registry. models.json stays the single source of
   # truth; opencode.json is never hand-edited.
@@ -354,92 +351,55 @@
     plugin = ["opencode-parser"];
   };
 
-  opencodeWrapper = pkgs.writeShellScriptBin "opencode" (
-    lib.replaceStrings
-    [
-      "__env_dir__"
-      "__curl_bin__"
-      "__llama_swap_bin__"
-      "__swap_config__"
-      "__opencode_bin__"
-      "__llama_health_url__"
-      "__llama_host__"
-      "__llama_port__"
-        "__models_json__"
-        "__jq_bin__"
-        "__pgrep_bin__"
-        "__oc_name__"
-        "__oc_desktop_name__"
-        "__swap_name__"
-        "__log_file__"
-      ]
-      [
-        envDir
-        "${pkgs.curl}/bin/curl"
-        "${pkgs.llama-swap}/bin/llama-swap"
-        "${config.home.homeDirectory}/.config/llama-swap/config.yaml"
-        "${pkgs.opencode}/bin/opencode"
-        llamaHealthUrl
-        llamaHost
-        llamaPort
-        modelsJson
-        "${pkgs.jq}/bin/jq"
-        "${pkgs.procps}/bin/pgrep"
-        "opencode"
-        "opencode-desktop"
-        "llama-swap"
-        "/tmp/opencode-llama-swap.log"
-      ]
-      wrapperScript
-    );
+  swapConfigPath = "${config.home.homeDirectory}/.config/llama-swap/config.yaml";
 
-  # Periodic safety net: the wrapper's on-exit hook covers CLI instances, but
-  # it cannot fire for a SIGKILLed wrapper, and opencode-desktop never runs
-  # the wrapper at all. This timer-driven oneshot stops the backend whenever
-  # no opencode instance is left and the backend is past its startup grace.
-  llamaSwapWatchdog = pkgs.writeShellScriptBin "llama-swap-watchdog" (
-    lib.replaceStrings
-    [
-      "__pgrep_bin__"
-      "__oc_name__"
-      "__oc_desktop_name__"
-      "__swap_name__"
-      "__log_file__"
-    ]
-    [
-      "${pkgs.procps}/bin/pgrep"
-      "opencode"
-      "opencode-desktop"
-      "llama-swap"
-      "/tmp/opencode-llama-swap.log"
-    ]
-    watchdogScript
-  );
+  # API keys live in a gitignored env dir and must never reach the Nix store,
+  # so they are sourced into the login session at runtime rather than declared
+  # as session variables. opencode-desktop imports the login-shell environment,
+  # so both front-ends see them.
+  envScript = pkgs.writeShellScript "source-llm-agent-env" ''
+    if [ -d "${envDir}" ]; then
+      for env_file in "${envDir}"/*.env; do
+        [ -e "$env_file" ] || continue
+        set -a
+        . "$env_file"
+        set +a
+      done
+      unset env_file
+    fi
+  '';
  in {
    home.packages = [
      pkgs.llama-cpp
      pkgs.llama-swap
-     opencodeWrapper
+     pkgs.opencode
      pkgs.opencode-desktop
      pkgs.opencode-claude-auth
    ];
 
-   systemd.user.services."llama-swap-watchdog" = {
-     Unit.Description = "Stop the llama-swap backend when no opencode instances remain";
-     Service = {
-       Type = "oneshot";
-       ExecStart = "${llamaSwapWatchdog}/bin/llama-swap-watchdog";
+   # The backend is always on (ADR 0001). It costs ~10 MB and a listening
+   # socket; the resource that matters is the resident model, which is managed
+   # separately. Making it unconditional is what lets opencode-desktop select a
+   # local model at all — it forks a bundled sidecar and never executes anything
+   # from PATH, so a demand-start wrapper could never be triggered by it.
+   systemd.user.services.llama-swap = {
+     Unit = {
+       Description = "llama-swap backend for local models";
+       After = [ "network-online.target" ];
+       Wants = [ "network-online.target" ];
      };
+     Service = {
+       Type = "exec";
+       ExecStart = "${pkgs.llama-swap}/bin/llama-swap -config ${swapConfigPath} -listen ${llamaHost}:${llamaPort}";
+       Restart = "on-failure";
+       RestartSec = "2s";
+     };
+     Install.WantedBy = [ "default.target" ];
    };
 
-   systemd.user.timers."llama-swap-watchdog" = {
-     Unit.Description = "Periodically run the llama-swap watchdog";
-     Timer = {
-       OnBootSec = "30s";
-       OnUnitActiveSec = "30s";
-     };
-     Install.WantedBy = [ "timers.target" ];
-   };
+  programs.bash.profileExtra = lib.mkAfter ''
+    [ -f "${envScript}" ] && . "${envScript}"
+  '';
 
   home.file.".config/opencode/opencode.json".text = builtins.toJSON opencodeConfig;
   home.file.".config/opencode/AGENTS.md".source = ./AGENTS.md;
@@ -453,5 +413,6 @@
       assertion = false;
       message = "llm-agent ${message}";
     })
-    registryErrors;
+    registryErrors
+    ++ lib.optional (llamaHost != "127.0.0.1") "llamaHost must be a loopback address: the backend has no authentication";
 }

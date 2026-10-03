@@ -117,8 +117,8 @@ Packages available: `nix`, `git`, `alejandra`, `shellcheck`.
 
 ## Gotchas
 
-- The `opencode` wrapper script (in `users/spyro/modules/productivity/llm-agent/opencode-wrapper.sh`) is baked into the Nix store. Rebuild (`config build two-b`) before testing changes — see `llm-agent/TESTING.md`.
-- The wrapper stops `llama-swap` when the last opencode instance exits (EXIT trap), with a `llama-swap-watchdog` systemd user timer (30 s) as safety net and a 90 s startup grace. Instance detection matches the `/proc/PID/exe` basename, **not** `comm` — the kernel truncates `comm` to 15 chars and `opencode-desktop` is 16, so `pgrep -x`/`comm` never see the desktop app.
+- The `llama-swap` backend is a systemd user service (always on — see `docs/adr/0001-always-on-llama-swap-backend.md`). Check it with `systemctl --user status llama-swap`; reload its generated config with `systemctl --user restart llama-swap`. There is **no** `opencode` wrapper: `opencode` is the raw binary, so `--model`/`--cloud`/`opencode models` no longer exist (use `opencode --model llama.cpp/<key>`).
+- API keys in `env/*.env` are sourced into the **login session** via `programs.bash.profileExtra` — deliberately not `home.sessionVariables`, which would bake them into the Nix store. New login shells pick up key changes; an existing shell needs `exec bash -l` or a re-source.
 - `env/*.env` files are gitignored (API keys for figma/stitch). Never commit or read secrets into flake output.
 - `sudo` is actually `run0` with `enableSudoAlias` and `wheelNeedsPassword = true` — deploy commands prompt for a password and won't run unattended.
 - `opencode.json` is managed via Home Manager; symlinked into `~/.config/opencode/opencode.json`.
