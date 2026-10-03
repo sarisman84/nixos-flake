@@ -67,4 +67,4 @@ result is valid YAML, but do not expect YAML formatting or comments in the
 generated file. Its shape is asserted by `nix flake check` — the one-resident
 guarantee is a build-time check, not a runtime hope.
 
-Adding a model means adding one entry here and rebuilding. No other file needs editing.
+Adding a model means adding one entry here and rebuilding. No other file needs editing. Which values to set — and why — is covered in [tuning.md](./tuning.md).
