@@ -48,19 +48,14 @@ The `<model key>` is the **identity on the wire**: it becomes the `model` field 
 | `~/.config/opencode/opencode.json` → `model` | `default` |
 | `~/.config/llama-swap/config.yaml` → `models` | `llama.cpp` entries; `options` → `llama-server` argv, `ttl` → per-model TTL |
 | `~/.config/llama-swap/config.yaml` → `routing` | one **swap group** over all `llama.cpp` keys, one resident at a time |
-| `~/.config/opencode/plugins/llm-agent-unload.ts` | the unload policy's plugin entry |
-| `~/.config/opencode/llm-agent/{decision,plugin}.ts` | the unload policy's implementation |
+| `~/.config/opencode/plugins/llm-agent-unload.ts` | the unload policy, as one self-contained file |
 | `~/.config/llama-swap/unload-policy.json` | `unloadPolicy` thresholds + the backend URL |
 
 The unload thresholds are registry data rather than code constants, so retuning
 is an edit to `models.json`. `nix flake check` rejects an `unloadPolicy` that is
 missing, mistyped, or carries an unknown field.
 
-The plugin is deployed as a single entry file in opencode's plugin directory,
-re-exporting the implementation from a sibling directory. opencode imports every
-file under `plugins/` as a plugin, so keeping the implementation — and the tests,
-which must never be imported by the loader — outside it means only one file is
-ever treated as a plugin.
+The plugin is deployed as a single self-contained file: `home.file.<name>.text` flattens each file to its own store path, so a relative import in the deployed copy would resolve against `/nix/store` and fail silently. The seam stays authored separately in `policy/decision.ts` and is spliced in at build time; `nix flake check` asserts the splice stayed sound, and the deployed file exports exactly one function (opencode invokes every function export as a plugin factory).
 
 `config.yaml` is emitted with `builtins.toJSON`. JSON is a subset of YAML, so the
 result is valid YAML, but do not expect YAML formatting or comments in the
