@@ -15,7 +15,10 @@
 
   validCacheTypes = ["f32" "f16" "bf16" "q8_0" "q4_0" "q4_1" "iq4_nl" "q5_0" "q5_1"];
   validOptionFields = ["ctxSize" "outputLimit" "gpuLayers" "cacheType" "cacheTypeK" "cacheTypeV" "reasoningBudget" "ttl" "temperature" "topP" "topK" "minP" "specProfile" "extraArgs" "templateOverride"];
-  validSpecFields = ["enabled" "specType" "draftModel" "draftTokensMax" "draftCtxSize" "draftCacheTypeK" "draftCacheTypeV"];
+  validSpecFields = ["enabled" "specType" "draftModel" "draftTokensMax" "draftPMin" "draftPSplit" "draftGpuLayers" "draftCacheTypeK" "draftCacheTypeV"];
+  # llama.cpp --spec-type list as of v0.3.0 (nixos-unstable). Re-verify on
+  # `nix flake update`.
+  validSpecTypes = ["none" "draft-simple" "draft-eagle3" "draft-mtp" "draft-dflash" "draft-dspark" "ngram-simple" "ngram-map-k" "ngram-map-k4v" "ngram-mod" "ngram-cache"];
 
   errIf = cond: msg: lib.optional (!cond) msg;
 
@@ -29,10 +32,12 @@
     in
       (map (f: "model '${name}': unknown specProfile field '${f}'") unknown)
       ++ errIf (!(profile ? enabled) || builtins.isBool profile.enabled) "model '${name}': 'options.specProfile.enabled' must be a boolean"
-      ++ errIf (!(profile ? specType) || builtins.isString profile.specType) "model '${name}': 'options.specProfile.specType' must be a string"
+      ++ errIf (!(profile ? specType) || (builtins.isString profile.specType && builtins.elem profile.specType validSpecTypes)) "model '${name}': 'options.specProfile.specType' must be one of ${builtins.toString validSpecTypes}"
       ++ errIf (!(profile ? draftModel) || builtins.isString profile.draftModel) "model '${name}': 'options.specProfile.draftModel' must be a string"
       ++ errIf (!(profile ? draftTokensMax) || (builtins.isInt profile.draftTokensMax && profile.draftTokensMax > 0)) "model '${name}': 'options.specProfile.draftTokensMax' must be a positive integer"
-      ++ errIf (!(profile ? draftCtxSize) || (builtins.isInt profile.draftCtxSize && profile.draftCtxSize > 0)) "model '${name}': 'options.specProfile.draftCtxSize' must be a positive integer"
+      ++ errIf (!(profile ? draftPMin) || ((builtins.isFloat profile.draftPMin || builtins.isInt profile.draftPMin) && profile.draftPMin >= 0 && profile.draftPMin <= 1)) "model '${name}': 'options.specProfile.draftPMin' must be a number in [0, 1]"
+      ++ errIf (!(profile ? draftPSplit) || ((builtins.isFloat profile.draftPSplit || builtins.isInt profile.draftPSplit) && profile.draftPSplit >= 0 && profile.draftPSplit <= 1)) "model '${name}': 'options.specProfile.draftPSplit' must be a number in [0, 1]"
+      ++ errIf (!(profile ? draftGpuLayers) || ((builtins.isInt profile.draftGpuLayers && profile.draftGpuLayers >= -1) || (builtins.isString profile.draftGpuLayers && builtins.elem profile.draftGpuLayers ["auto" "all"]))) "model '${name}': 'options.specProfile.draftGpuLayers' must be an integer >= -1 or 'auto'/'all'"
       ++ errIf (!(profile ? draftCacheTypeK) || (builtins.isString profile.draftCacheTypeK && builtins.elem profile.draftCacheTypeK validCacheTypes)) "model '${name}': 'options.specProfile.draftCacheTypeK' must be a KV cache type"
       ++ errIf (!(profile ? draftCacheTypeV) || (builtins.isString profile.draftCacheTypeV && builtins.elem profile.draftCacheTypeV validCacheTypes)) "model '${name}': 'options.specProfile.draftCacheTypeV' must be a KV cache type";
 
@@ -279,8 +284,22 @@
         ++ lib.optional ((specProfile ? draftModel) && builtins.isString specProfile.draftModel) specProfile.draftModel
         ++ lib.optional ((specProfile ? draftTokensMax) && builtins.isInt specProfile.draftTokensMax) "--spec-draft-n-max"
         ++ lib.optional ((specProfile ? draftTokensMax) && builtins.isInt specProfile.draftTokensMax) (toString specProfile.draftTokensMax)
-        ++ lib.optional ((specProfile ? draftCtxSize) && builtins.isInt specProfile.draftCtxSize) "--ctx-size-draft"
-        ++ lib.optional ((specProfile ? draftCtxSize) && builtins.isInt specProfile.draftCtxSize) (toString specProfile.draftCtxSize)
+        ++ lib.optional ((specProfile ? draftPMin) && (builtins.isFloat specProfile.draftPMin || builtins.isInt specProfile.draftPMin)) "--spec-draft-p-min"
+        ++ lib.optional ((specProfile ? draftPMin) && (builtins.isFloat specProfile.draftPMin || builtins.isInt specProfile.draftPMin)) (toString specProfile.draftPMin)
+        ++ lib.optional ((specProfile ? draftPSplit) && (builtins.isFloat specProfile.draftPSplit || builtins.isInt specProfile.draftPSplit)) "--spec-draft-p-split"
+        ++ lib.optional ((specProfile ? draftPSplit) && (builtins.isFloat specProfile.draftPSplit || builtins.isInt specProfile.draftPSplit)) (toString specProfile.draftPSplit)
+        ++ (
+          if specProfile ? draftGpuLayers
+          then
+            if builtins.isString specProfile.draftGpuLayers
+            then ["--spec-draft-ngl" specProfile.draftGpuLayers]
+            else
+              [
+                "--spec-draft-ngl"
+                (if specProfile.draftGpuLayers < 0 then "all" else toString specProfile.draftGpuLayers)
+              ]
+          else []
+        )
         ++ lib.optional ((specProfile ? draftCacheTypeK) && builtins.isString specProfile.draftCacheTypeK) "--cache-type-k-draft"
         ++ lib.optional ((specProfile ? draftCacheTypeK) && builtins.isString specProfile.draftCacheTypeK) specProfile.draftCacheTypeK
         ++ lib.optional ((specProfile ? draftCacheTypeV) && builtins.isString specProfile.draftCacheTypeV) "--cache-type-v-draft"
