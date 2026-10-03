@@ -54,7 +54,7 @@ AGENTS.md                  # this file
 
 - Add a host → `hosts/<name>/` with `host.nix` (declare `spyroFlake.hosts.<name>`) + `configuration.nix` + any `.nix` modules; add the user's host to `host.nix`'s `users` list.
 - Add a user module → drop a `.nix` file into `users/<user>/modules/`; it's auto-imported by `builder.nix` via `getNixFileNames`.
-- `pkgs` = nixos-unstable; `pkgsStable` = nixos-26.05. `llama-cpp` (used by `llm-agent`) is intentionally pinned to stable.
+- `pkgs` = nixos-unstable; `pkgsStable` = nixos-26.05. `llama-cpp` (used by `llm-agent`) tracks nixos-unstable (v0.5.0 at the current lock); the registry's flag list is validated against it, so re-verify `default.nix`'s flag lists after `nix flake update`.
 - Never commit `env/*.env` (gitignored; holds API keys).
 
 ## Version Control
