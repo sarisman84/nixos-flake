@@ -14,7 +14,7 @@
   registryParse = builtins.tryEval (builtins.fromJSON (builtins.readFile ./models.json));
 
   validCacheTypes = ["f32" "f16" "bf16" "q8_0" "q4_0" "q4_1" "iq4_nl" "q5_0" "q5_1"];
-  validOptionFields = ["ctxSize" "outputLimit" "gpuLayers" "cacheType" "cacheTypeK" "cacheTypeV" "reasoningBudget" "ttl" "specProfile" "extraArgs" "templateOverride"];
+  validOptionFields = ["ctxSize" "outputLimit" "gpuLayers" "cacheType" "cacheTypeK" "cacheTypeV" "reasoningBudget" "ttl" "temperature" "topP" "topK" "minP" "specProfile" "extraArgs" "templateOverride"];
   validSpecFields = ["enabled" "specType" "draftModel" "draftTokensMax" "draftCtxSize" "draftCacheTypeK" "draftCacheTypeV"];
 
   errIf = cond: msg: lib.optional (!cond) msg;
@@ -52,6 +52,10 @@
       ++ errIf (!(opts ? cacheType) || (!(opts ? cacheTypeK) && !(opts ? cacheTypeV))) "model '${name}': 'options.cacheType' shorthand cannot be combined with explicit 'cacheTypeK'/'cacheTypeV'"
       ++ errIf (!(opts ? reasoningBudget) || opts.reasoningBudget == null || (builtins.isInt opts.reasoningBudget && opts.reasoningBudget >= -1)) "model '${name}': 'options.reasoningBudget' must be an integer >= -1 (-1 = unrestricted) or null (server default)"
       ++ errIf (!(opts ? ttl) || (builtins.isInt opts.ttl && opts.ttl >= 0)) "model '${name}': 'options.ttl' must be a non-negative integer (0 = never evict)"
+      ++ errIf (!(opts ? temperature) || ((builtins.isFloat opts.temperature || builtins.isInt opts.temperature) && opts.temperature >= 0)) "model '${name}': 'options.temperature' must be a number >= 0"
+      ++ errIf (!(opts ? topP) || ((builtins.isFloat opts.topP || builtins.isInt opts.topP) && opts.topP >= 0 && opts.topP <= 1)) "model '${name}': 'options.topP' must be a number in [0, 1]"
+      ++ errIf (!(opts ? topK) || (builtins.isInt opts.topK && opts.topK >= 0)) "model '${name}': 'options.topK' must be an integer >= 0 (0 = disabled)"
+      ++ errIf (!(opts ? minP) || ((builtins.isFloat opts.minP || builtins.isInt opts.minP) && opts.minP >= 0 && opts.minP <= 1)) "model '${name}': 'options.minP' must be a number in [0, 1]"
       ++ (
         if opts ? specProfile
         then checkSpecProfile name opts.specProfile
@@ -246,6 +250,14 @@
       if (opts ? templateOverride) && builtins.isString opts.templateOverride
       then ["--chat-template-file" opts.templateOverride]
       else [];
+    # Server-side sampling baseline. opencode sends no sampling params for
+    # these custom models, so the CLI flags are the effective defaults; an
+    # agent-level temperature still overrides per session.
+    samplingArgs =
+      lib.optionals ((opts ? temperature) && (builtins.isFloat opts.temperature || builtins.isInt opts.temperature)) ["--temperature" (toString opts.temperature)]
+      ++ lib.optionals ((opts ? topP) && (builtins.isFloat opts.topP || builtins.isInt opts.topP)) ["--top-p" (toString opts.topP)]
+      ++ lib.optionals ((opts ? topK) && builtins.isInt opts.topK) ["--top-k" (toString opts.topK)]
+      ++ lib.optionals ((opts ? minP) && (builtins.isFloat opts.minP || builtins.isInt opts.minP)) ["--min-p" (toString opts.minP)];
     # Speculative decoding flags per the llama.cpp server docs (v0.3.0).
     # specProfile covers every --spec-type, not just MTP.
     specProfile =
@@ -297,6 +309,7 @@
       ]
       ++ reasoningArgs
       ++ templateArgs
+      ++ samplingArgs
       ++ specArgs
       ++ extraArgs);
 

@@ -33,6 +33,10 @@ The `<model key>` is the **identity on the wire**: it becomes the `model` field 
 | `cacheTypeK` / `cacheTypeV` | Split KV quantization | `f16` |
 | `cacheType` | Shorthand setting both | — |
 | `reasoningBudget` | Thinking-token cap; `null` = server default | — |
+| `temperature` | Sampling temperature → `--temperature`. Server-side baseline; an agent-level temperature overrides per session | `0.8` |
+| `topP` | Nucleus sampling → `--top-p` | `0.95` |
+| `topK` | Top-k sampling → `--top-k`; `0` = disabled | `40` |
+| `minP` | Min-p sampling → `--min-p`; `0.0` = disabled | `0.05` |
 | `templateOverride` | Chat template file | — |
 | `ttl` | Backend-side idle eviction, seconds. `0` = never. Failsafe only, set by the unload policy | `120` |
 | `specProfile` | Speculative decoding tuning; speed XOR context, never implicit | off |
