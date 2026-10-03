@@ -112,12 +112,81 @@ back in.
 | Desktop app | pick a local model in the desktop app | reply |
 | Keys loaded | `systemctl --user show-environment \| grep FIGMA` | present |
 
+## The unload policy
+
+A session going idle past the threshold unloads the resident model. The policy is
+an opencode plugin; the thresholds live in `models.json` under `unloadPolicy` and
+reach the plugin through the generated `~/.config/llama-swap/unload-policy.json`.
+
+```bash
+cat ~/.config/llama-swap/unload-policy.json      # thresholds actually in force
+cat ~/.local/state/llm-agent/heartbeat.json      # written when the plugin loads
+ls   ~/.local/state/llm-agent/leases/            # one lease per live instance
+```
+
+The heartbeat matters because opencode discards the cause of a plugin load
+failure: a plugin that throws on import produces no log at any level. **A missing
+or stale heartbeat means the policy is not running**, which is otherwise
+indistinguishable from "nothing needed unloading".
+
+### Watching a decision
+
+`client.app.log` entries carry the reason. To see them:
+
+```bash
+opencode --print-logs --log-level DEBUG 2>&1 | grep "unload decision"
+```
+
+Reasons, all of which mean *do not unload* unless stated:
+
+| Reason | Meaning |
+|---|---|
+| `all-leases-idle` | every live lease is past the threshold — **this one unloads** |
+| `lease-busy` | some instance is mid-generation |
+| `lease-active` | some instance did local work within the threshold |
+| `lease-settling` | an idle observation is younger than the settle delay |
+| `lease-unobserved` | an instance started within the settle delay and has seen no session |
+| `inflight-present` | the backend reported a request in flight |
+| `lease-set-unreadable` | the lease set could not be read — never reads as permission |
+| `no-live-lease` | the set was readable but nothing in it is alive |
+
+### Verifying an unload
+
+```bash
+curl -s http://127.0.0.1:8080/running     # {"running":[...]} before
+nvidia-smi --query-gpu=memory.used --format=csv
+# ... start a local session, then stop prompting and wait out the threshold ...
+curl -s http://127.0.0.1:8080/running     # {"running":[]} after
+```
+
+`POST /api/models/unload` does **not** consult the backend's in-flight tracking —
+that guard exists only on the swap path. Unload terminates a server mid-request
+and the client sees a truncated stream. Until #50 lands, in-flight state is
+self-reported from the plugin's own sessions, so **do not unload by hand while
+another instance is generating**.
+
+### Unit tests
+
+The decision function is pure and runs without a GPU, a backend or a running
+opencode:
+
+```bash
+nix develop .
+bun test users/spyro/modules/productivity/llm-agent/policy   # 37 tests
+cd users/spyro/modules/productivity/llm-agent/policy && tsc --noEmit -p tsconfig.json
+```
+
 ## Not yet implemented
 
-The unload policy described in ADR 0002 (plugin-owned idle unload, leases,
-heartbeat, failsafe floor) is **not built yet**. Until it is, `globalTTL` is `0`
-and a model stays resident indefinitely once loaded — stop it by hand with
-`curl -X POST http://127.0.0.1:8080/unload`.
+- **#50** — the backend's in-flight stream as the authority on whether a request
+  is running. Until then the plugin only knows about its *own* sessions, so an
+  instance that does not carry the plugin is invisible to the policy.
+- **#51** — a session that switches to a cloud model releases the resident model
+  immediately instead of waiting out the threshold.
+- **#52** — check-and-unload under a lock, so two idle instances cannot unload
+  across each other.
+- **#53** — the `globalTTL` failsafe floor, currently still `0`.
 
-Note that `POST /api/models/unload` does **not** protect in-flight requests: it
-terminates a server mid-request. Only do this when nothing is generating.
+**Migrating warning.** Until every opencode instance is deployed with the plugin,
+a plugin-bearing instance can unload a model that an older instance is actively
+using, because the older one publishes no lease. Deploy before relying on this.

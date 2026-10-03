@@ -110,7 +110,9 @@ sudo nixos-rebuild switch --flake ~/config/nixos-flake/#two-b --show-trace
 ```bash
 nix develop .           # enter devShell
 ```
-Packages available: `nix`, `git`, `alejandra`, `shellcheck`, `jq`.
+Packages available: `nix`, `git`, `alejandra`, `shellcheck`, `jq`, `bun`, `typescript`.
+- Run the llm-agent unload-policy tests: `bun test users/spyro/modules/productivity/llm-agent/policy`
+- Typecheck them: `cd users/spyro/modules/productivity/llm-agent/policy && tsc --noEmit -p tsconfig.json`
 - Format a file: `alejandra --format <file>` (repo is *not* currently alejandra-formatted — only format files you touch).
 - Check formatting: `alejandra --check <file>`.
 - Validate shell scripts: `shellcheck <file>`.
@@ -118,6 +120,8 @@ Packages available: `nix`, `git`, `alejandra`, `shellcheck`, `jq`.
 ## Gotchas
 
 - The `llama-swap` backend is a systemd user service (always on — see `docs/adr/0001-always-on-llama-swap-backend.md`). Check it with `systemctl --user status llama-swap`; reload its generated config with `systemctl --user restart llama-swap`. There is **no** `opencode` wrapper: `opencode` is the raw binary, so `--model`/`--cloud`/`opencode models` no longer exist (use `opencode --model llama.cpp/<key>`).
+- The unload policy is an opencode plugin at `~/.config/opencode/plugins/llm-agent-unload.ts` (implementation in `~/.config/opencode/llm-agent/`). Its heartbeat is `~/.local/state/llm-agent/heartbeat.json` — **a missing heartbeat means the plugin failed to load**, because opencode silently discards plugin load failures. Its thresholds are registry data: `unloadPolicy` in `models.json`. See `docs/adr/0002-plugin-owned-unload-policy.md` and `users/spyro/modules/productivity/llm-agent/TESTING.md`.
+- Two facts about the opencode plugin host, established by probing 1.18.31 and recorded in `policy/ambient.d.ts`: the plugin factory is called **more than once per process** (hence the singleton guard), and `chat.message` carries **no** model while `chat.params` does.
 - API keys in `env/*.env` are rendered at activation into `~/.config/environment.d/50-llm-agent.conf` (mode 600) so the systemd user manager passes them to GUI apps — a profile hook reaches the CLI but **not** `opencode-desktop`. Deliberately not `home.sessionVariables`, which would bake them into the Nix store. After changing a key, re-activate or restart the user manager.
 - `env/*.env` files are gitignored (API keys for figma/stitch). Never commit or read secrets into flake output.
 - `sudo` is actually `run0` with `enableSudoAlias` and `wheelNeedsPassword = true` — deploy commands prompt for a password and won't run unattended.

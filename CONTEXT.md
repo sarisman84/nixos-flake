@@ -77,6 +77,18 @@ _Avoid_: inactive, dormant, cold, unused
 Seconds of backend-side inactivity after which the resident model is unloaded. `0` never evicts. A failsafe floor only — the **idle** policy is owned elsewhere.
 _Avoid_: timeout, expiry, lease
 
+**lease**
+One opencode instance's published claim on the **resident model**: what it is doing, and how long since it last did anything local. A lease is a statement of intent, not proof of anything.
+_Avoid_: lock, claim, token, heartbeat
+
+**settle delay**
+The interval a reported **idle** must stand still before it is believed. Exists because a turn's opening request is in flight before the session is marked busy.
+_Avoid_: debounce, grace period, hysteresis
+
+**heartbeat**
+A written record that the policy loaded and is still running. Distinguishes "the policy decided not to unload" from "the policy does not exist".
+_Avoid_: ping, keepalive, liveness probe
+
 **hardware profile**
 RTX 5090 (32 GB VRAM), 64 GB system RAM, Ryzen 9950X3D. Constrains the maximum feasible `ctxSize` for a given weight size and `cacheType` combination.
 

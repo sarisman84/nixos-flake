@@ -7,6 +7,7 @@
 ```json
 {
   "default": { "provider": "llama.cpp", "name": "qwen3-30b-a3b" },
+  "unloadPolicy": { "idleThresholdSeconds": 300, "settleSeconds": 15 },
   "llama.cpp": {
     "<model key>": {
       "displayName": "Shown in the opencode model selector",
@@ -47,6 +48,19 @@ The `<model key>` is the **identity on the wire**: it becomes the `model` field 
 | `~/.config/opencode/opencode.json` → `model` | `default` |
 | `~/.config/llama-swap/config.yaml` → `models` | `llama.cpp` entries; `options` → `llama-server` argv, `ttl` → per-model TTL |
 | `~/.config/llama-swap/config.yaml` → `routing` | one **swap group** over all `llama.cpp` keys, one resident at a time |
+| `~/.config/opencode/plugins/llm-agent-unload.ts` | the unload policy's plugin entry |
+| `~/.config/opencode/llm-agent/{decision,plugin}.ts` | the unload policy's implementation |
+| `~/.config/llama-swap/unload-policy.json` | `unloadPolicy` thresholds + the backend URL |
+
+The unload thresholds are registry data rather than code constants, so retuning
+is an edit to `models.json`. `nix flake check` rejects an `unloadPolicy` that is
+missing, mistyped, or carries an unknown field.
+
+The plugin is deployed as a single entry file in opencode's plugin directory,
+re-exporting the implementation from a sibling directory. opencode imports every
+file under `plugins/` as a plugin, so keeping the implementation — and the tests,
+which must never be imported by the loader — outside it means only one file is
+ever treated as a plugin.
 
 `config.yaml` is emitted with `builtins.toJSON`. JSON is a subset of YAML, so the
 result is valid YAML, but do not expect YAML formatting or comments in the

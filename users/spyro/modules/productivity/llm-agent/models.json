@@ -3,6 +3,10 @@
     "provider": "llama.cpp",
     "name": "qwen3-30b-a3b"
   },
+  "unloadPolicy": {
+    "idleThresholdSeconds": 300,
+    "settleSeconds": 15
+  },
   "llama.cpp": {
     "qwen3.8-27b": {
       "displayName": "Qwen3.8 27B reasoning",

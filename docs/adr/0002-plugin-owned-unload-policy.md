@@ -2,7 +2,24 @@
 
 llama-swap can unload an idle **resident model** itself via per-model `ttl` / `globalTTL`. We deliberately do not use it as the primary mechanism. A systemd user service owns the backend (see `0001-always-on-llama-swap-backend.md`), and an opencode plugin owns when the resident model is unloaded. `globalTTL` is set to 1800 s as a failsafe floor only.
 
-> **Status: decided, not implemented.** The plugin, the leases and the heartbeat do not exist yet; `globalTTL` is still `0` and unload is manual. Tracked in #49–#53. This ADR records the decision so the floor is not later mistaken for an oversight.
+> **Status: partly built (#49).** The plugin, the lease and the heartbeat exist, and a session going idle past the threshold does unload the resident model. Still to come: the failsafe floor (#53), the backend's in-flight stream as the authority (#50), cloud-selection release (#51), and cross-instance arbitration under a lock (#52). `globalTTL` is still `0`. This ADR records the whole decision so the floor is not later mistaken for an oversight.
+
+## What #49 established
+
+- **The seam.** `shouldUnload(leaseSet, inflight, now, policy) → { unload, reason }` in `policy/decision.ts`. It needs no GPU, no backend, no filesystem and no running opencode, which is the only reason the policy is testable at all.
+- **The lease.** Every instance publishes `~/.local/state/llm-agent/leases/<pid>.<id>.json`: pid, boot id, `startedAt`, `lastLocalActivityAt`, `busySince`, `idleSince`. Liveness is resolved by the reader from pid *and* boot id, so a recycled pid or a lease from a previous boot cannot pin the model.
+- **Unavailability refuses.** An unreadable lease set, an unreadable lease file, an unparseable lease, and a set with nothing alive in it all yield `unload: false`.
+- **Three host facts, each probed against opencode 1.18.31 rather than read off a changelog**, and each recorded in `policy/ambient.d.ts`:
+  1. The plugin factory is called **more than once per process**. Leases, timers and the heartbeat sit behind a singleton guard; without it one process would publish two leases and run two unload timers.
+  2. `chat.params` carries the model; `chat.message` does not. Model selection is read from `chat.params`.
+  3. `session.status` reports `busy` / `idle` / `retry`. `session.idle` still exists and is deprecated; it is not used.
+- **The settle delay is load-bearing, not decorative.** Observed live: a decision of `lease-settling` preceded the `all-leases-idle` that unloaded.
+- **One idle epoch, one unload attempt.** A turn that fails or is cancelled can report idle repeatedly; the idle clock only advances on the busy-to-idle *edge*.
+
+## Consequences of what #49 left out
+
+- **In-flight state is still self-reported.** #49 derives in-flight entries from its own sessions, because the backend's authoritative stream is #50. A sibling instance's request is covered by its lease being busy, but a request from an instance that does *not* carry the plugin is invisible. Until every instance is deployed, an unload can truncate such a request — this is the concrete reason #50 must land before the policy is trusted in anger.
+- **Auxiliary traffic still refreshes the lease.** `chat.params` fires for session-title generation, which today runs on a local model (#54). Every session start therefore refreshes `lastLocalActivityAt` once. That is the conservative direction — it holds the model longer rather than unloading during work — and #54 removes the cause.
 
 ## Considered options
 

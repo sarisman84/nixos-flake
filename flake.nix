@@ -71,6 +71,11 @@
             pkgs.alejandra
             pkgs.shellcheck
             pkgs.jq
+            # The llm-agent unload policy (ticket #49) is TypeScript. Its
+            # decision tests run at the dev-shell tier:
+            #   bun test users/spyro/modules/productivity/llm-agent/policy
+            pkgs.bun
+            pkgs.typescript
           ];
           shellHook = ''
             echo "nixos-flake devShell — see AGENTS.md for layout, commands, and the check/build/deploy workflow."
