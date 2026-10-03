@@ -16,7 +16,7 @@
   validCacheTypes = ["f32" "f16" "bf16" "q8_0" "q4_0" "q4_1" "iq4_nl" "q5_0" "q5_1"];
   validOptionFields = ["ctxSize" "outputLimit" "gpuLayers" "cacheType" "cacheTypeK" "cacheTypeV" "reasoningBudget" "ttl" "temperature" "topP" "topK" "minP" "specProfile" "extraArgs" "templateOverride"];
   validSpecFields = ["enabled" "specType" "draftModel" "draftTokensMax" "draftPMin" "draftPSplit" "draftGpuLayers" "draftCacheTypeK" "draftCacheTypeV"];
-  # llama.cpp --spec-type list as of v0.3.0 (nixos-unstable). Re-verify on
+  # llama.cpp --spec-type list as of v0.5.0 (nixos-unstable). Re-verify on
   # `nix flake update`.
   validSpecTypes = ["none" "draft-simple" "draft-eagle3" "draft-mtp" "draft-dflash" "draft-dspark" "ngram-simple" "ngram-map-k" "ngram-map-k4v" "ngram-mod" "ngram-cache"];
 
@@ -263,7 +263,7 @@
       ++ lib.optionals ((opts ? topP) && (builtins.isFloat opts.topP || builtins.isInt opts.topP)) ["--top-p" (toString opts.topP)]
       ++ lib.optionals ((opts ? topK) && builtins.isInt opts.topK) ["--top-k" (toString opts.topK)]
       ++ lib.optionals ((opts ? minP) && (builtins.isFloat opts.minP || builtins.isInt opts.minP)) ["--min-p" (toString opts.minP)];
-    # Speculative decoding flags per the llama.cpp server docs (v0.3.0).
+    # Speculative decoding flags per the llama.cpp server docs (v0.5.0).
     # specProfile covers every --spec-type, not just MTP.
     specProfile =
       if (opts ? specProfile) && builtins.isAttrs opts.specProfile

@@ -39,7 +39,7 @@ The `<model key>` is the **identity on the wire**: it becomes the `model` field 
 | `minP` | Min-p sampling → `--min-p`; `0.0` = disabled | `0.05` |
 | `templateOverride` | Chat template file | — |
 | `ttl` | Backend-side idle eviction, seconds. `0` = never. Failsafe only, set by the unload policy | `120` |
-| `specProfile` | Speculative decoding tuning; speed XOR context, never implicit. `specType` is validated against the llama.cpp `--spec-type` list (v0.3.0: draft-*, ngram-*) | off |
+| `specProfile` | Speculative decoding tuning; speed XOR context, never implicit. `specType` is validated against the llama.cpp `--spec-type` list (v0.5.0: draft-*, ngram-*) | off |
 | `specProfile.draftModel` / `.draftTokensMax` / `.draftPMin` / `.draftPSplit` / `.draftGpuLayers` / `.draftCacheTypeK` / `.draftCacheTypeV` | Draft-model knobs → `--model-draft`, `--spec-draft-n-max`, `--spec-draft-p-min`, `--spec-draft-p-split`, `--spec-draft-ngl`, `--cache-type-k/v-draft` | server defaults |
 | `extraArgs` | Raw `llama-server` flags | — |
 
