@@ -1,7 +1,19 @@
 import { mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
-import { isRepeatUnload, shouldUnload, type Decision, type InflightEntry, type Lease, type LeaseSet } from "./decision.js"
+// The seam, spliced in at deploy time. Home Manager flattens each file to its
+// own store path, so this relative import would resolve against the Nix store
+// and fail to load — silently, because the loader discards the cause. The
+// deployed artefact is therefore the two files concatenated, and `nix flake
+// check` asserts this import was the one thing removed.
+import {
+  isRepeatUnload,
+  shouldUnload,
+  type Decision,
+  type InflightEntry,
+  type Lease,
+  type LeaseSet,
+} from "./decision.js"
 
 /**
  * The plugin half of the unload policy.

@@ -130,6 +130,14 @@ failure: a plugin that throws on import produces no log at any level. **A missin
 or stale heartbeat means the policy is not running**, which is otherwise
 indistinguishable from "nothing needed unloading".
 
+It has already caught a real one. The plugin was first deployed as an entry file
+re-exporting `../llm-agent/plugin.js`, but Home Manager compiles each `home.file`
+to its own store path named after the target — so that relative import resolved
+against `/nix/store`, the load failed, and nothing anywhere said so. The plugin
+now ships as a single self-contained file. **If the heartbeat is ever missing
+again, check what the deployed file actually imports before suspecting the
+policy logic.**
+
 ### Watching a decision
 
 `client.app.log` entries carry the reason. To see them:

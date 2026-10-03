@@ -18,7 +18,26 @@ llama-swap can unload an idle **resident model** itself via per-model `ttl` / `g
 
 ## Consequences of what #49 left out
 
-- **In-flight state is still self-reported.** #49 derives in-flight entries from its own sessions, because the backend's authoritative stream is #50. A sibling instance's request is covered by its lease being busy, but a request from an instance that does *not* carry the plugin is invisible. Until every instance is deployed, an unload can truncate such a request — this is the concrete reason #50 must land before the policy is trusted in anger.
+- **In-flight state is still self-reported.** #49 derives in-flight entries from its own sessions, because the backend's authoritative stream is #50. Its wire format, probed against llama-swap 249 so #50 does not have to rediscover it:
+
+  ```
+  GET /api/events                       # SSE, `event:message`, then data:
+  data:{"type":"inflight","data":"{\"operation\":\"snapshot\"}"}
+  data:{"type":"inflight","data":"{\"operation\":\"upsert\",\"request\":{\"id\":\"7\",\"model\":\"...\",\"req_path\":\"/v1/chat/completions\",...}}"}
+  data:{"type":"inflight","data":"{\"operation\":\"remove\",\"id\":\"7\"}"}
+  ```
+
+  Three things to know: `data` is a **nested JSON string** and must be parsed
+  twice; the operation is `remove`, not `delete`; and each entry names its
+  `model`, which is what makes per-model refusal possible. A `snapshot` with no
+  `request` is the initial state, not an empty one to be ignored.
+
+- **The deployed plugin is one spliced file.** `home.file.<name>.text` compiles
+  each file to its own store path named after the target with separators
+  stripped, so the entry's `../llm-agent/plugin.js` resolved against the Nix
+  store and the plugin silently never loaded. It now ships as a single
+  self-contained file, with `nix flake check` asserting the splice stayed
+  sound. A sibling instance's request is covered by its lease being busy, but a request from an instance that does *not* carry the plugin is invisible. Until every instance is deployed, an unload can truncate such a request — this is the concrete reason #50 must land before the policy is trusted in anger.
 - **Auxiliary traffic still refreshes the lease.** `chat.params` fires for session-title generation, which today runs on a local model (#54). Every session start therefore refreshes `lastLocalActivityAt` once. That is the conservative direction — it holds the model longer rather than unloading during work — and #54 removes the cause.
 
 ## Considered options

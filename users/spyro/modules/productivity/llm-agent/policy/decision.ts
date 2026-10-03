@@ -26,7 +26,7 @@
  * have one. A lease from a killed instance, or one written before the current
  * boot, arrives already marked `alive: false` and is ignored.
  */
-export type Lease = {
+type Lease = {
   /** Separates two plugin instances inside one process. */
   instanceId: string
   pid: number
@@ -42,16 +42,16 @@ export type Lease = {
 }
 
 /** A request the backend says is running right now. */
-export type InflightEntry = {
+type InflightEntry = {
   id: string
   /** `null` when the backend did not name one. */
   model: string | null
 }
 
 /** The lease set as read, including the failure to read it. */
-export type LeaseSet = { readable: true; leases: Lease[] } | { readable: false; error: string }
+type LeaseSet = { readable: true; leases: Lease[] } | { readable: false; error: string }
 
-export type Policy = {
+type Policy = {
   /** ms without local activity before a lease stops holding the resident model. */
   idleThresholdMs: number
   /**
@@ -66,7 +66,7 @@ export type Policy = {
   settleMs: number
 }
 
-export type Reason =
+type Reason =
   | "all-leases-idle"
   | "lease-active"
   | "lease-busy"
@@ -76,7 +76,7 @@ export type Reason =
   | "lease-set-unreadable"
   | "no-live-lease"
 
-export type Decision = { unload: boolean; reason: Reason }
+type Decision = { unload: boolean; reason: Reason }
 
 const refuse = (reason: Reason): Decision => ({ unload: false, reason })
 
@@ -86,7 +86,7 @@ const refuse = (reason: Reason): Decision => ({ unload: false, reason })
  * `now` is passed in rather than read from the clock so that time is an input
  * like any other and the thresholds can be tested without waiting for them.
  */
-export function shouldUnload(
+function shouldUnload(
   leaseSet: LeaseSet,
   inflight: readonly InflightEntry[],
   now: number,
@@ -144,9 +144,15 @@ export function shouldUnload(
  * policy runs on a timer, so the same idle epoch is otherwise re-decided every
  * tick. One epoch yields one unload attempt.
  */
-export function isRepeatUnload(lastUnloadAt: number | null, leaseSet: LeaseSet): boolean {
+function isRepeatUnload(lastUnloadAt: number | null, leaseSet: LeaseSet): boolean {
   if (lastUnloadAt === null) return false
   if (!leaseSet.readable) return false
   const live = leaseSet.leases.filter((l) => l.alive)
   return !live.some((l) => l.lastLocalActivityAt !== null && l.lastLocalActivityAt > lastUnloadAt)
 }
+
+// The deployed plugin is this file spliced into policy/plugin.ts. Only the seam
+// needs a name out here; the rest stays module-local so the concatenation does
+// not export two versions of everything.
+export { isRepeatUnload, shouldUnload }
+export type { Decision, InflightEntry, Lease, LeaseSet, Policy, Reason }
