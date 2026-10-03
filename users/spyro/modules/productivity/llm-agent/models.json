@@ -19,7 +19,7 @@
         "cacheTypeV": "q4_0",
         "reasoningBudget": 2048,
         "ttl": 0,
-        "mtpProfile": {
+        "specProfile": {
           "enabled": false
         },
         "extraArgs": ["--flash-attn", "on"]
@@ -37,7 +37,7 @@
         "cacheTypeV": "q4_0",
         "reasoningBudget": 2048,
         "ttl": 0,
-        "mtpProfile": {
+        "specProfile": {
           "enabled": false
         },
         "extraArgs": ["--flash-attn", "on", "--no-mmproj"]
@@ -54,7 +54,7 @@
         "cacheTypeV": "q4_0",
         "reasoningBudget": 0,
         "ttl": 0,
-        "mtpProfile": {
+        "specProfile": {
           "enabled": false
         },
         "extraArgs": ["--flash-attn", "on"]
@@ -71,7 +71,7 @@
         "cacheTypeV": "q8_0",
         "reasoningBudget": null,
         "ttl": 0,
-        "mtpProfile": {
+        "specProfile": {
           "enabled": false
         },
         "extraArgs": ["--flash-attn", "on", "--reasoning-effort", "low"]
@@ -88,7 +88,7 @@
         "cacheTypeV": "q4_0",
         "reasoningBudget": 0,
         "ttl": 0,
-        "mtpProfile": {
+        "specProfile": {
           "enabled": false
         },
         "extraArgs": ["--flash-attn", "on", "--no-mmproj"]

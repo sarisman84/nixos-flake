@@ -35,7 +35,7 @@ The `<model key>` is the **identity on the wire**: it becomes the `model` field 
 | `reasoningBudget` | Thinking-token cap; `null` = server default | — |
 | `templateOverride` | Chat template file | — |
 | `ttl` | Backend-side idle eviction, seconds. `0` = never. Failsafe only, set by the unload policy | `120` |
-| `mtpProfile` | Multi-Token Prediction tuning; speed XOR context, never implicit | off |
+| `specProfile` | Speculative decoding tuning; speed XOR context, never implicit | off |
 | `extraArgs` | Raw `llama-server` flags | — |
 
 `cacheType` cannot be combined with `cacheTypeK`/`cacheTypeV`. Quantized `cacheTypeV` requires `--flash-attn on`.

@@ -14,27 +14,27 @@
   registryParse = builtins.tryEval (builtins.fromJSON (builtins.readFile ./models.json));
 
   validCacheTypes = ["f32" "f16" "bf16" "q8_0" "q4_0" "q4_1" "iq4_nl" "q5_0" "q5_1"];
-  validOptionFields = ["ctxSize" "outputLimit" "gpuLayers" "cacheType" "cacheTypeK" "cacheTypeV" "reasoningBudget" "ttl" "mtpProfile" "extraArgs" "templateOverride"];
-  validMtpFields = ["enabled" "specType" "draftModel" "draftTokensMax" "draftCtxSize" "draftCacheTypeK" "draftCacheTypeV"];
+  validOptionFields = ["ctxSize" "outputLimit" "gpuLayers" "cacheType" "cacheTypeK" "cacheTypeV" "reasoningBudget" "ttl" "specProfile" "extraArgs" "templateOverride"];
+  validSpecFields = ["enabled" "specType" "draftModel" "draftTokensMax" "draftCtxSize" "draftCacheTypeK" "draftCacheTypeV"];
 
   errIf = cond: msg: lib.optional (!cond) msg;
 
   validEntryFields = [ "displayName" "hfRef" "options" "_comment" ];
 
-  checkMtpProfile = name: profile:
+  checkSpecProfile = name: profile:
     if !builtins.isAttrs profile
-    then ["model '${name}': 'options.mtpProfile' must be an object"]
+    then ["model '${name}': 'options.specProfile' must be an object"]
     else let
-      unknown = builtins.filter (f: !(builtins.elem f validMtpFields)) (builtins.attrNames profile);
+      unknown = builtins.filter (f: !(builtins.elem f validSpecFields)) (builtins.attrNames profile);
     in
-      (map (f: "model '${name}': unknown mtpProfile field '${f}'") unknown)
-      ++ errIf (!(profile ? enabled) || builtins.isBool profile.enabled) "model '${name}': 'options.mtpProfile.enabled' must be a boolean"
-      ++ errIf (!(profile ? specType) || builtins.isString profile.specType) "model '${name}': 'options.mtpProfile.specType' must be a string"
-      ++ errIf (!(profile ? draftModel) || builtins.isString profile.draftModel) "model '${name}': 'options.mtpProfile.draftModel' must be a string"
-      ++ errIf (!(profile ? draftTokensMax) || (builtins.isInt profile.draftTokensMax && profile.draftTokensMax > 0)) "model '${name}': 'options.mtpProfile.draftTokensMax' must be a positive integer"
-      ++ errIf (!(profile ? draftCtxSize) || (builtins.isInt profile.draftCtxSize && profile.draftCtxSize > 0)) "model '${name}': 'options.mtpProfile.draftCtxSize' must be a positive integer"
-      ++ errIf (!(profile ? draftCacheTypeK) || (builtins.isString profile.draftCacheTypeK && builtins.elem profile.draftCacheTypeK validCacheTypes)) "model '${name}': 'options.mtpProfile.draftCacheTypeK' must be a KV cache type"
-      ++ errIf (!(profile ? draftCacheTypeV) || (builtins.isString profile.draftCacheTypeV && builtins.elem profile.draftCacheTypeV validCacheTypes)) "model '${name}': 'options.mtpProfile.draftCacheTypeV' must be a KV cache type";
+      (map (f: "model '${name}': unknown specProfile field '${f}'") unknown)
+      ++ errIf (!(profile ? enabled) || builtins.isBool profile.enabled) "model '${name}': 'options.specProfile.enabled' must be a boolean"
+      ++ errIf (!(profile ? specType) || builtins.isString profile.specType) "model '${name}': 'options.specProfile.specType' must be a string"
+      ++ errIf (!(profile ? draftModel) || builtins.isString profile.draftModel) "model '${name}': 'options.specProfile.draftModel' must be a string"
+      ++ errIf (!(profile ? draftTokensMax) || (builtins.isInt profile.draftTokensMax && profile.draftTokensMax > 0)) "model '${name}': 'options.specProfile.draftTokensMax' must be a positive integer"
+      ++ errIf (!(profile ? draftCtxSize) || (builtins.isInt profile.draftCtxSize && profile.draftCtxSize > 0)) "model '${name}': 'options.specProfile.draftCtxSize' must be a positive integer"
+      ++ errIf (!(profile ? draftCacheTypeK) || (builtins.isString profile.draftCacheTypeK && builtins.elem profile.draftCacheTypeK validCacheTypes)) "model '${name}': 'options.specProfile.draftCacheTypeK' must be a KV cache type"
+      ++ errIf (!(profile ? draftCacheTypeV) || (builtins.isString profile.draftCacheTypeV && builtins.elem profile.draftCacheTypeV validCacheTypes)) "model '${name}': 'options.specProfile.draftCacheTypeV' must be a KV cache type";
 
   checkOptions = name: opts:
     if !builtins.isAttrs opts
@@ -53,8 +53,8 @@
       ++ errIf (!(opts ? reasoningBudget) || opts.reasoningBudget == null || (builtins.isInt opts.reasoningBudget && opts.reasoningBudget >= -1)) "model '${name}': 'options.reasoningBudget' must be an integer >= -1 (-1 = unrestricted) or null (server default)"
       ++ errIf (!(opts ? ttl) || (builtins.isInt opts.ttl && opts.ttl >= 0)) "model '${name}': 'options.ttl' must be a non-negative integer (0 = never evict)"
       ++ (
-        if opts ? mtpProfile
-        then checkMtpProfile name opts.mtpProfile
+        if opts ? specProfile
+        then checkSpecProfile name opts.specProfile
         else []
       )
       ++ errIf (!(opts ? extraArgs) || (builtins.isList opts.extraArgs && builtins.all builtins.isString opts.extraArgs)) "model '${name}': 'options.extraArgs' must be a list of strings"
@@ -246,33 +246,33 @@
       if (opts ? templateOverride) && builtins.isString opts.templateOverride
       then ["--chat-template-file" opts.templateOverride]
       else [];
-    # MTP flag names per llama.cpp speculative docs; re-verify when MTP
-    # tuning lands (deferred post-spec). All current entries disable MTP.
-    mtpProfile =
-      if (opts ? mtpProfile) && builtins.isAttrs opts.mtpProfile
-      then opts.mtpProfile
+    # Speculative decoding flags per the llama.cpp server docs (v0.3.0).
+    # specProfile covers every --spec-type, not just MTP.
+    specProfile =
+      if (opts ? specProfile) && builtins.isAttrs opts.specProfile
+      then opts.specProfile
       else {};
-    mtpArgs =
-      if (mtpProfile ? enabled) && mtpProfile.enabled == true
+    specArgs =
+      if (specProfile ? enabled) && specProfile.enabled == true
       then
         [
           "--spec-type"
           (
-            if (mtpProfile ? specType) && builtins.isString mtpProfile.specType
-            then mtpProfile.specType
+            if (specProfile ? specType) && builtins.isString specProfile.specType
+            then specProfile.specType
             else "draft-mtp"
           )
         ]
-        ++ lib.optional ((mtpProfile ? draftModel) && builtins.isString mtpProfile.draftModel) "--model-draft"
-        ++ lib.optional ((mtpProfile ? draftModel) && builtins.isString mtpProfile.draftModel) mtpProfile.draftModel
-        ++ lib.optional ((mtpProfile ? draftTokensMax) && builtins.isInt mtpProfile.draftTokensMax) "--spec-draft-n-max"
-        ++ lib.optional ((mtpProfile ? draftTokensMax) && builtins.isInt mtpProfile.draftTokensMax) (toString mtpProfile.draftTokensMax)
-        ++ lib.optional ((mtpProfile ? draftCtxSize) && builtins.isInt mtpProfile.draftCtxSize) "--ctx-size-draft"
-        ++ lib.optional ((mtpProfile ? draftCtxSize) && builtins.isInt mtpProfile.draftCtxSize) (toString mtpProfile.draftCtxSize)
-        ++ lib.optional ((mtpProfile ? draftCacheTypeK) && builtins.isString mtpProfile.draftCacheTypeK) "--cache-type-k-draft"
-        ++ lib.optional ((mtpProfile ? draftCacheTypeK) && builtins.isString mtpProfile.draftCacheTypeK) mtpProfile.draftCacheTypeK
-        ++ lib.optional ((mtpProfile ? draftCacheTypeV) && builtins.isString mtpProfile.draftCacheTypeV) "--cache-type-v-draft"
-        ++ lib.optional ((mtpProfile ? draftCacheTypeV) && builtins.isString mtpProfile.draftCacheTypeV) mtpProfile.draftCacheTypeV
+        ++ lib.optional ((specProfile ? draftModel) && builtins.isString specProfile.draftModel) "--model-draft"
+        ++ lib.optional ((specProfile ? draftModel) && builtins.isString specProfile.draftModel) specProfile.draftModel
+        ++ lib.optional ((specProfile ? draftTokensMax) && builtins.isInt specProfile.draftTokensMax) "--spec-draft-n-max"
+        ++ lib.optional ((specProfile ? draftTokensMax) && builtins.isInt specProfile.draftTokensMax) (toString specProfile.draftTokensMax)
+        ++ lib.optional ((specProfile ? draftCtxSize) && builtins.isInt specProfile.draftCtxSize) "--ctx-size-draft"
+        ++ lib.optional ((specProfile ? draftCtxSize) && builtins.isInt specProfile.draftCtxSize) (toString specProfile.draftCtxSize)
+        ++ lib.optional ((specProfile ? draftCacheTypeK) && builtins.isString specProfile.draftCacheTypeK) "--cache-type-k-draft"
+        ++ lib.optional ((specProfile ? draftCacheTypeK) && builtins.isString specProfile.draftCacheTypeK) specProfile.draftCacheTypeK
+        ++ lib.optional ((specProfile ? draftCacheTypeV) && builtins.isString specProfile.draftCacheTypeV) "--cache-type-v-draft"
+        ++ lib.optional ((specProfile ? draftCacheTypeV) && builtins.isString specProfile.draftCacheTypeV) specProfile.draftCacheTypeV
       else [];
     extraArgs =
       if (opts ? extraArgs) && builtins.isList opts.extraArgs
@@ -297,7 +297,7 @@
       ]
       ++ reasoningArgs
       ++ templateArgs
-      ++ mtpArgs
+      ++ specArgs
       ++ extraArgs);
 
   swapModels =

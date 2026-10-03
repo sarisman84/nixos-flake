@@ -40,8 +40,8 @@ _Avoid_: thinking budget, reasoning tokens
 **cacheTypeK / cacheTypeV**
 Split KV-cache quantization formats. Determines memory footprint per token of context. Bare `cacheType` is shorthand for both. Quantized `cacheTypeV` requires flash attention.
 
-**mtpProfile**
-Multi-Token Prediction tuning. Speed XOR max context, never implicit.
+**specProfile**
+Speculative decoding tuning — any `--spec-type` (draft, MTP, ngram), not just Multi-Token Prediction. Speed XOR max context, never implicit.
 
 **efficient model**
 A model entry chosen for capability rather than cost: large context, reasoning budget enabled. The opposite of a **cheap model**.
