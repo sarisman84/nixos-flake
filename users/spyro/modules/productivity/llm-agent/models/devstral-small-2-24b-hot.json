@@ -1,0 +1,24 @@
+{
+  "_comment": "Temperature sweep, high end: temp 1.0, top_p 0.95. Test target: variance on a dense model — if it loops or degenerates at 0.3, this is the tuning.md T1 lever before changing anything else.",
+  "displayName": "Devstral Small 2 24B hot",
+  "hfRef": "unsloth/Devstral-Small-2-24B-Instruct-2512-GGUF:UD-Q4_K_XL",
+  "options": {
+    "ctxSize": 131072,
+    "outputLimit": 16384,
+    "gpuLayers": -1,
+    "cacheTypeK": "q4_0",
+    "cacheTypeV": "q4_0",
+    "reasoningBudget": 0,
+    "ttl": 0,
+    "temperature": 1.0,
+    "topP": 0.95,
+    "specProfile": {
+      "enabled": false
+    },
+    "extraArgs": [
+      "--flash-attn",
+      "on",
+      "--no-mmproj"
+    ]
+  }
+}

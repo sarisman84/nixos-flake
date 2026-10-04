@@ -17,8 +17,18 @@ Recommended settings for the current registry on this hardware (RTX 5090, 32 GB 
 | `qwen3.8-27b-200k` | reasoning, long ctx | 200k | q4_0 | temp 0.4 | #55: q8_0 KV OOMs at 200k |
 | `gpt-oss-20b` | reasoning alternative | 131k | q8_0 | 1.0 / 1.0 / 64 / 0.0 | vendor set; `--reasoning-effort low` |
 | `mistral-small-3.2-24b` | dense alternative | 131k | q4_0 | temp 0.3 | — |
+| `qwen3.6-35b-a3b` | replacement candidate, thinking | 131k | q4_0 | 0.6 / 0.95 / 20 | research #1; budget 2048; verify `qwen35moe` loads |
+| `qwen3.6-35b-a3b-nt` | replacement candidate, non-thinking | 131k | q4_0 | 0.7 / 0.80 / 20 | vendor non-thinking preset; budget 0 |
+| `qwen3.6-35b-a3b-cold` / `-hot` | temp sweep 0.2 / 1.0 | 131k | q4_0 | 0.2 / 1.0 | same vendor p/k; `-hot` tests loop robustness |
+| `qwen3.6-35b-a3b-262k` | full native context | 262k | q4_0 | 0.6 / 0.95 / 20 | DeltaNet arch: KV ~2.0 GB, ~5.4 GB headroom |
+| `qwen3.6-35b-a3b-ngram` | speed variant | 131k | q4_0 | 0.6 / 0.95 / 20 | `ngram-mod`; zero extra VRAM |
+| `glm-4.7-flash` | headroom candidate | 131k | q4_0 | temp 0.4 | budget 2048; 10.5 GB headroom; no vendor preset |
+| `glm-4.7-flash-hot` | temp sweep 1.0 | 131k | q4_0 | 1.0 / 0.95 | loop/degeneration lever |
+| `glm-4.7-flash-200k` | long context | 200k | q4_0 | temp 0.4 | ~24.6 GB total, 7.4 GB headroom |
+| `devstral-small-2-24b` | dense candidate | 131k | q4_0 | temp 0.3 | successor to `mistral-small-3.2-24b`; `--no-mmproj` |
+| `devstral-small-2-24b-hot` | temp sweep 1.0 | 131k | q4_0 | 1.0 / 0.95 | loop/degeneration lever |
 
-Choosing: agentic coding → A3B family (fast, cheap to iterate). Hard reasoning → 27B family. Long documents → the 200k entries (A3B first; it is the better long-context citizen — see T2).
+Choosing: agentic coding → A3B family (fast, cheap to iterate). Hard reasoning → 27B family. Long documents → the 200k entries (A3B first; it is the better long-context citizen — see T2). The `qwen3.6-35b-a3b*` and `devstral-small-2-24b*` rows are research candidates (note `docs/research/balanced-model-replacement.md` on branch `research/balanced-model-replacement`), verified to load, pass health checks, and respond — `qwen35moe` included. `glm-4.7-flash*` weights are cached but not yet loaded. Quality/speed bake-off against the current entries is still open; do not make one the default until measured.
 
 ## T1 — temperature
 

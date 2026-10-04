@@ -1,0 +1,24 @@
+{
+  "_comment": "Research candidate #1 (docs/research/balanced-model-replacement.md on research/balanced-model-replacement): 35B total / 3B active hybrid MoE (qwen35moe arch; 10 full-attn layers + 30 DeltaNet -> KV only ~1.0 GB @131k q4_0). UD-Q4_K_XL 22.36 GB weights -> ~25.6 GB total @131k, ~6.4 GB headroom. Vendor thinking-precise-coding preset: temp 0.6, top_p 0.95, top_k 20. SWE-bench Verified 73.4 / Terminal-Bench 2.0 51.5. BEFORE enabling: verify the flake's llama.cpp loads the qwen35moe arch (server log per tuning.md 'Verifying a change').",
+  "displayName": "Qwen3.6 35B-A3B thinking",
+  "hfRef": "unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_XL",
+  "options": {
+    "ctxSize": 131072,
+    "outputLimit": 16384,
+    "gpuLayers": -1,
+    "cacheTypeK": "q4_0",
+    "cacheTypeV": "q4_0",
+    "reasoningBudget": 2048,
+    "ttl": 0,
+    "temperature": 0.6,
+    "topP": 0.95,
+    "topK": 20,
+    "specProfile": {
+      "enabled": false
+    },
+    "extraArgs": [
+      "--flash-attn",
+      "on"
+    ]
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "_comment": "Research candidate #2: GLM-4.7-Flash (Z.ai, MIT, 2026-01-19), 30B-A3B deepseek2/MLA MoE, ~3B active. UD-Q4_K_XL 17.52 GB weights -> ~21.5 GB total @131k, 10.5 GB headroom — most of the three candidates; 200k ctx viable. SWE-bench Verified 59.2 / tau2-bench 79.5 / LiveCodeBench v6 64.0. No vendor sampling preset in the research note: temp 0.4 is the repo's reasoning-model convention (qwen3.8-27b) and the tuning.md T1 balanced band.",
+  "displayName": "GLM-4.7 Flash",
+  "hfRef": "unsloth/GLM-4.7-Flash-GGUF:UD-Q4_K_XL",
+  "options": {
+    "ctxSize": 131072,
+    "outputLimit": 16384,
+    "gpuLayers": -1,
+    "cacheTypeK": "q4_0",
+    "cacheTypeV": "q4_0",
+    "reasoningBudget": 2048,
+    "ttl": 0,
+    "temperature": 0.4,
+    "specProfile": {
+      "enabled": false
+    },
+    "extraArgs": [
+      "--flash-attn",
+      "on"
+    ]
+  }
+}
