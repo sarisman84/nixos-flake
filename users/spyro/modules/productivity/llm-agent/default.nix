@@ -705,7 +705,8 @@ Service = {
     home.activation.llamaAgentEnv = lib.hm.dag.entryAfter [ "home-manager-files" ] ''
       install -Dm600 ${envActivation} "$HOME/.config/environment.d/.llm-agent-activation"
       HOME="$HOME" ${envActivation}
-      export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$UID}"
+      if [ -z "$XDG_RUNTIME_DIR" ]; then XDG_RUNTIME_DIR="/run/user/$UID"; fi
+      export XDG_RUNTIME_DIR
       ${pkgs.systemd}/bin/systemctl --user daemon-reload 2>/dev/null || true
       if out=$(${pkgs.systemd}/bin/systemctl --user restart llama-swap 2>&1); then
         :
