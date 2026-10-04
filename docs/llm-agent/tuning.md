@@ -28,7 +28,7 @@ Recommended settings for the current registry on this hardware (RTX 5090, 32 GB 
 | `devstral-small-2-24b` | dense candidate | 131k | q4_0 | temp 0.3 | successor to `mistral-small-3.2-24b`; `--no-mmproj` |
 | `devstral-small-2-24b-hot` | temp sweep 1.0 | 131k | q4_0 | 1.0 / 0.95 | loop/degeneration lever |
 
-Choosing: agentic coding → A3B family (fast, cheap to iterate). Hard reasoning → 27B family. Long documents → the 200k entries (A3B first; it is the better long-context citizen — see T2). The `qwen3.6-35b-a3b*`, `glm-4.7-flash*`, and `devstral-small-2-24b*` rows are unverified research candidates (note `docs/research/balanced-model-replacement.md` on branch `research/balanced-model-replacement`): check the server log per "Verifying a change" before use, and do not make one the default until measured against the current entries.
+Choosing: agentic coding → A3B family (fast, cheap to iterate). Hard reasoning → 27B family. Long documents → the 200k entries (A3B first; it is the better long-context citizen — see T2). The `qwen3.6-35b-a3b*` and `devstral-small-2-24b*` rows are research candidates (note `docs/research/balanced-model-replacement.md` on branch `research/balanced-model-replacement`), verified to load, pass health checks, and respond — `qwen35moe` included. `glm-4.7-flash*` weights are cached but not yet loaded. Quality/speed bake-off against the current entries is still open; do not make one the default until measured.
 
 ## T1 — temperature
 
