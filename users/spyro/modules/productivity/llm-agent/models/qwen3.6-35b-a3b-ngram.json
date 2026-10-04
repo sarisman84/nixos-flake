@@ -1,0 +1,25 @@
+{
+  "_comment": "ngram-mod: speculative decoding with no draft model and no MTP heads; zero extra VRAM (tuning.md T4). Test target: decode-speed uplift for the thinking profile. Vendor thinking preset.",
+  "displayName": "Qwen3.6 35B-A3B thinking (ngram)",
+  "hfRef": "unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_XL",
+  "options": {
+    "ctxSize": 131072,
+    "outputLimit": 16384,
+    "gpuLayers": -1,
+    "cacheTypeK": "q4_0",
+    "cacheTypeV": "q4_0",
+    "reasoningBudget": 2048,
+    "ttl": 0,
+    "temperature": 0.6,
+    "topP": 0.95,
+    "topK": 20,
+    "specProfile": {
+      "enabled": true,
+      "specType": "ngram-mod"
+    },
+    "extraArgs": [
+      "--flash-attn",
+      "on"
+    ]
+  }
+}

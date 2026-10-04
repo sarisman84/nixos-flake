@@ -14,6 +14,17 @@
     "qwen3.8-27b",
     "qwen3.8-27b-200k",
     "gpt-oss-20b",
-    "mistral-small-3.2-24b"
+    "mistral-small-3.2-24b",
+    "qwen3.6-35b-a3b",
+    "qwen3.6-35b-a3b-nt",
+    "qwen3.6-35b-a3b-cold",
+    "qwen3.6-35b-a3b-hot",
+    "qwen3.6-35b-a3b-262k",
+    "qwen3.6-35b-a3b-ngram",
+    "glm-4.7-flash",
+    "glm-4.7-flash-hot",
+    "glm-4.7-flash-200k",
+    "devstral-small-2-24b",
+    "devstral-small-2-24b-hot"
   ]
 }

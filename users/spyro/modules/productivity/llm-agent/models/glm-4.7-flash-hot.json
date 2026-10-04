@@ -1,0 +1,23 @@
+{
+  "_comment": "Temperature sweep, high end: temp 1.0, balanced top_p 0.95. GLM-4.7-Flash is a reasoning model; per tuning.md T1 raise temperature if it loops or degenerates. No vendor preset in the research note.",
+  "displayName": "GLM-4.7 Flash hot",
+  "hfRef": "unsloth/GLM-4.7-Flash-GGUF:UD-Q4_K_XL",
+  "options": {
+    "ctxSize": 131072,
+    "outputLimit": 16384,
+    "gpuLayers": -1,
+    "cacheTypeK": "q4_0",
+    "cacheTypeV": "q4_0",
+    "reasoningBudget": 2048,
+    "ttl": 0,
+    "temperature": 1.0,
+    "topP": 0.95,
+    "specProfile": {
+      "enabled": false
+    },
+    "extraArgs": [
+      "--flash-attn",
+      "on"
+    ]
+  }
+}

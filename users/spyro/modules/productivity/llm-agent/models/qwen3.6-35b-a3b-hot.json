@@ -1,0 +1,24 @@
+{
+  "_comment": "Temperature sweep, high end: thinking at temp 1.0 (varied band, tuning.md T1). Test target: robustness where the old A3B default degenerated into infinite loops; per tuning.md T1, raise temperature when a reasoning model loops. Vendor top_p 0.95 / top_k 20 kept.",
+  "displayName": "Qwen3.6 35B-A3B thinking hot",
+  "hfRef": "unsloth/Qwen3.6-35B-A3B-GGUF:UD-Q4_K_XL",
+  "options": {
+    "ctxSize": 131072,
+    "outputLimit": 16384,
+    "gpuLayers": -1,
+    "cacheTypeK": "q4_0",
+    "cacheTypeV": "q4_0",
+    "reasoningBudget": 2048,
+    "ttl": 0,
+    "temperature": 1.0,
+    "topP": 0.95,
+    "topK": 20,
+    "specProfile": {
+      "enabled": false
+    },
+    "extraArgs": [
+      "--flash-attn",
+      "on"
+    ]
+  }
+}

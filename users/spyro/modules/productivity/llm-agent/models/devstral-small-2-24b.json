@@ -1,0 +1,23 @@
+{
+  "_comment": "Research candidate #3: Devstral Small 2 24B (Mistral, 2025-12, Apache-2.0) — 24B dense ministral3 (40 layers, 8 KV heads -> KV 5.4 GB @131k q4_0). UD-Q4_K_XL 14.51 GB weights -> ~22.1 GB total, 9.9 GB headroom; YaRN to 393216 (card 256k). SWE-bench Verified 68.0 — best 24B-class agentic score; dense, so slower per token than the ~3B-active MoEs. Drop-in successor to mistral-small-3.2-24b. Stock llama.cpp needs the mistral3 attn-factor fix (PR #17945, merged 2025-12-12).",
+  "displayName": "Devstral Small 2 24B",
+  "hfRef": "unsloth/Devstral-Small-2-24B-Instruct-2512-GGUF:UD-Q4_K_XL",
+  "options": {
+    "ctxSize": 131072,
+    "outputLimit": 16384,
+    "gpuLayers": -1,
+    "cacheTypeK": "q4_0",
+    "cacheTypeV": "q4_0",
+    "reasoningBudget": 0,
+    "ttl": 0,
+    "temperature": 0.3,
+    "specProfile": {
+      "enabled": false
+    },
+    "extraArgs": [
+      "--flash-attn",
+      "on",
+      "--no-mmproj"
+    ]
+  }
+}
