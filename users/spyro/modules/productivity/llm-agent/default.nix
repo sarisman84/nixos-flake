@@ -695,11 +695,19 @@ Service = {
     # a warning; the service then picks the new config up at the next session
     # start. A restart failure with the manager reachable fails the deploy: a
     # stale backend after a registry change is the bug this exists to prevent.
+    #
+    # The activation script runs in a login shell whose PATH is the user
+    # profile's, not the unit's Environment= PATH, and /run/current-system may
+    # be mid-switch — so `systemctl` is addressed by store path (the same
+    # pattern home-manager's own generated units use) and XDG_RUNTIME_DIR is
+    # set explicitly: the wrapper's best-effort session import uses bare
+    # `systemctl` too and fails the same way, leaving no bus address behind.
     home.activation.llamaAgentEnv = lib.hm.dag.entryAfter [ "home-manager-files" ] ''
       install -Dm600 ${envActivation} "$HOME/.config/environment.d/.llm-agent-activation"
       HOME="$HOME" ${envActivation}
-      systemctl --user daemon-reload 2>/dev/null || true
-      if out=$(systemctl --user restart llama-swap 2>&1); then
+      export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$UID}"
+      ${pkgs.systemd}/bin/systemctl --user daemon-reload 2>/dev/null || true
+      if out=$(${pkgs.systemd}/bin/systemctl --user restart llama-swap 2>&1); then
         :
       elif printf '%s' "$out" | grep -q "connect to.*bus"; then
         echo "llm-agent: user manager unreachable; llama-swap will pick up the new registry at session start" >&2
