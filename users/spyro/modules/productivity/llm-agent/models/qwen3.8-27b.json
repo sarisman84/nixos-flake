@@ -1,0 +1,21 @@
+{
+  "displayName": "Qwen3.8 27B reasoning",
+  "hfRef": "unsloth/Qwen3.8-27B-GGUF:UD-Q6_K_M",
+  "options": {
+    "ctxSize": 131072,
+    "outputLimit": 16384,
+    "gpuLayers": -1,
+    "cacheTypeK": "q4_0",
+    "cacheTypeV": "q4_0",
+    "reasoningBudget": 2048,
+    "ttl": 0,
+    "temperature": 0.4,
+    "specProfile": {
+      "enabled": false
+    },
+    "extraArgs": [
+      "--flash-attn",
+      "on"
+    ]
+  }
+}

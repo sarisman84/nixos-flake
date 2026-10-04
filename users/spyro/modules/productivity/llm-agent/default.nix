@@ -8,10 +8,84 @@
   llamaPort = "8080";
   envDir = "${config.home.homeDirectory}/config/nixos-flake/users/spyro/modules/productivity/llm-agent/env";
 
-  # Registry validation (ticket #35): models.json is the canonical model
-  # registry. Malformed entries must fail `nix flake check` with a readable
-  # error, surfaced through home-manager assertions.
-  registryParse = builtins.tryEval (builtins.fromJSON (builtins.readFile ./models.json));
+  # The registry is split across files. `config.json` holds the global
+  # settings (default model, unload policy) and the explicit list of model
+  # entries to register; each listed entry `<key>` lives in `models/<key>.json`.
+  # `cloud-models.json` maps cloud model aliases. A model is registered iff its
+  # file is named in config.json; an unlisted file in models/ is ignored.
+  # Malformed entries must fail `nix flake check` with a readable error,
+  # surfaced through home-manager assertions.
+  # Read a JSON file, degrading to null (and a readable error below) instead of
+  # throwing, so a malformed file surfaces as an assertion, not an opaque eval
+  # failure.
+  readJson = path: builtins.tryEval (builtins.fromJSON (builtins.readFile path));
+  globalConfigRes = readJson ./config.json;
+  cloudModelsRes = readJson ./cloud-models.json;
+  globalConfig = if globalConfigRes.success then globalConfigRes.value else {};
+  cloudModels = if cloudModelsRes.success then cloudModelsRes.value else {};
+  topJsonErrors =
+    lib.optional (!globalConfigRes.success) "config.json: invalid JSON"
+    ++ lib.optional (!cloudModelsRes.success) "cloud-models.json: invalid JSON";
+
+  # The model files actually present, so "listed but missing" becomes a
+  # readable error instead of a bare store-path open failure.
+  modelFiles = builtins.readDir ./models;
+
+  # The list of entries to register, from config.json. Coerced to a list so the
+  # per-entry checks below total over a malformed value rather than throwing.
+  modelList = if (globalConfig ? models) && builtins.isList globalConfig.models then globalConfig.models else [];
+
+  # Per-file load. A listed entry whose file is absent, or whose file is not
+  # valid JSON, is reported by name (below) and degraded to an empty entry so
+  # the rest of the registry still evaluates and the real error surfaces as a
+  # readable assertion instead of an opaque store-path throw.
+  parseModelFile = name:
+    if !(builtins.isString name) || !(modelFiles ? "${name}.json")
+    then { name = name; missing = true; ok = false; value = null; }
+    else let
+      res = builtins.tryEval (builtins.fromJSON (builtins.readFile "${./models}/${name}.json"));
+    in { name = name; missing = false; ok = res.success; value = if res.success then res.value else null; };
+
+  parsedModelFiles = map parseModelFile modelList;
+
+  # Readable errors for the model list and its files.
+  modelListErrors =
+    lib.optional (!((globalConfig ? models) && builtins.isList globalConfig.models)) "config.json: 'models' must be a list of model keys"
+    ++ lib.concatLists (map (name:
+      lib.optional (!(builtins.isString name)) "config.json: 'models' entries must be strings (got ${builtins.typeOf name})"
+    ) modelList);
+
+  modelFileErrors = lib.concatLists (map (p:
+    lib.optional (p.missing) "config.json: lists model '${toString p.name}' but models/${toString p.name}.json does not exist"
+    ++ lib.optional (!p.missing && !p.ok) "models/${toString p.name}.json: invalid JSON"
+  ) parsedModelFiles);
+
+  # Duplicate entries would make listToAttrs throw; report them readably.
+  modelNames = map (p: toString p.name) (lib.filter (p: builtins.isString p.name) parsedModelFiles);
+  duplicateModelErrors =
+    let uniqueNames = lib.unique modelNames;
+    in lib.optionals (builtins.length uniqueNames != builtins.length modelNames)
+       (map (n: "config.json: model '${n}' is listed more than once")
+          (lib.filter (n: builtins.length (lib.filter (m: m == n) modelNames) > 1) uniqueNames));
+
+  # Register exactly the well-formed entries named in config.json. `name` is
+  # the model key: the file name (minus .json) and the identity on the wire.
+  localModelsFromFiles = lib.listToAttrs (
+    map (p: { name = toString p.name; value = p.value or {}; })
+    (lib.filter (p: p.ok && builtins.isString p.name) parsedModelFiles)
+  );
+
+  # Combine all configuration. Guarded access so a malformed config.json
+  # (degraded to {}) reports via the checks below rather than throwing here.
+  combinedRegistry = {
+    default = if globalConfig ? default then globalConfig.default else {};
+    unloadPolicy = if globalConfig ? unloadPolicy then globalConfig.unloadPolicy else {};
+    llama.cpp = localModelsFromFiles;
+    opencode = cloudModels;
+  };
+
+  # Validate registry
+  registryParse = builtins.tryEval combinedRegistry;
 
   validCacheTypes = ["f32" "f16" "bf16" "q8_0" "q4_0" "q4_1" "iq4_nl" "q5_0" "q5_1"];
   validOptionFields = ["ctxSize" "outputLimit" "gpuLayers" "cacheType" "cacheTypeK" "cacheTypeV" "reasoningBudget" "ttl" "temperature" "topP" "topK" "minP" "specProfile" "extraArgs" "templateOverride"];
@@ -73,9 +147,9 @@
     if !builtins.isAttrs entry
     then ["model '${name}': entry must be an object"]
     else
-      # `_comment` is documentation for a human reading models.json, and is
-      # deliberately not a model field. Allowed here so an entry can explain a
-      # constraint that the shape checks below cannot enforce.
+      # `_comment` is documentation for a human reading models/<key>.json, and
+      # is deliberately not a model field. Allowed here so an entry can explain
+      # a constraint that the shape checks below cannot enforce.
       # `errIf` reports when the condition is FALSE, so the *expected* shape goes
       # in whole: absent is fine, present-but-not-a-string is not.
       errIf (!(entry ? _comment) || builtins.isString entry._comment)
@@ -91,27 +165,31 @@
         else []
       );
 
+  # Per-entry and global-shape validation over the combined registry. The
+  # per-file JSON parse and the config.json/cloud-models.json reads are handled
+  # by topJsonErrors / modelListErrors / modelFileErrors above; this block
+  # checks the assembled shape (defaults, unload policy, registered entries).
   registryErrors =
     if !registryParse.success
-    then ["models.json: invalid JSON"]
+    then ["registry: could not be assembled"]
     else let
       reg = registryParse.value;
     in
       if !builtins.isAttrs reg
-      then ["models.json: top level must be an object"]
+      then ["registry: top level must be an object"]
       else
-        errIf (reg ? default && builtins.isAttrs reg.default && (reg.default ? provider) && builtins.isString reg.default.provider && (reg.default ? name) && builtins.isString reg.default.name) "models.json: 'default' must be an object with string 'provider' and 'name'"
+        errIf (reg ? default && builtins.isAttrs reg.default && (reg.default ? provider) && builtins.isString reg.default.provider && (reg.default ? name) && builtins.isString reg.default.name) "config.json: 'default' must be an object with string 'provider' and 'name'"
         ++ (let
           local = reg."llama.cpp" or null;
         in
           if !builtins.isAttrs local
-          then ["models.json: 'llama.cpp' must be an object"]
+          then ["registry: 'llama.cpp' must be an object"]
           else lib.concatLists (lib.mapAttrsToList checkEntry local))
         ++ (let
           cloud = reg.opencode or null;
         in
           if !builtins.isAttrs cloud
-          then ["models.json: 'opencode' must be an object"]
+          then ["cloud-models.json: must be an object of model key -> value"]
           else lib.concatLists (lib.mapAttrsToList (n: v: errIf (builtins.isString v) "cloud model '${n}': value must be a string") cloud))
         ++ (
           if !(reg ? default && builtins.isAttrs reg.default && (reg.default ? provider) && builtins.isString reg.default.provider && (reg.default ? name) && builtins.isString reg.default.name)
@@ -121,27 +199,27 @@
             n = reg.default.name;
             section = reg.${p} or null;
           in
-            errIf (builtins.isAttrs section && builtins.hasAttr n section) "models.json: default model '${p}/${n}' is not registered"
+            errIf (builtins.isAttrs section && builtins.hasAttr n section) "config.json: default model '${p}/${n}' is not registered"
         )
         ++ (let
           policy = reg.unloadPolicy or null;
           positiveInt = v: builtins.isInt v && v > 0;
         in
           if !builtins.isAttrs policy
-          then ["models.json: 'unloadPolicy' must be an object"]
+          then ["config.json: 'unloadPolicy' must be an object"]
           else
             # `errIf` reports when its condition is FALSE, so the expected shape
             # is passed whole: `(has field) && (field is valid)`. Spelling this
             # `!(has) || valid` — as checkOptions does — makes it a no-op for a
             # missing field, which is the case worth catching here.
-            errIf ((policy ? idleThresholdSeconds) && positiveInt policy.idleThresholdSeconds) "models.json: 'unloadPolicy.idleThresholdSeconds' is required and must be a positive integer"
-            ++ errIf ((policy ? settleSeconds) && positiveInt policy.settleSeconds) "models.json: 'unloadPolicy.settleSeconds' is required and must be a positive integer"
-            ++ (map (f: "models.json: unknown unloadPolicy field '${f}'") (builtins.filter (f: !(builtins.elem f [ "idleThresholdSeconds" "settleSeconds" ])) (builtins.attrNames policy)))
+            errIf ((policy ? idleThresholdSeconds) && positiveInt policy.idleThresholdSeconds) "config.json: 'unloadPolicy.idleThresholdSeconds' is required and must be a positive integer"
+            ++ errIf ((policy ? settleSeconds) && positiveInt policy.settleSeconds) "config.json: 'unloadPolicy.settleSeconds' is required and must be a positive integer"
+            ++ (map (f: "config.json: unknown unloadPolicy field '${f}'") (builtins.filter (f: !(builtins.elem f [ "idleThresholdSeconds" "settleSeconds" ])) (builtins.attrNames policy)))
         );
 
   # Opencode config generation (ticket #36): the provider block is derived
-  # from the canonical registry. models.json stays the single source of
-  # truth; opencode.json is never hand-edited.
+  # from the canonical registry. registry is the combined configuration from
+  # config.json, cloud-models.json, and the individual models/<key>.json files.
   registry =
     if registryParse.success && builtins.isAttrs registryParse.value
     then registryParse.value
@@ -156,6 +234,8 @@
     if builtins.isAttrs section
     then section
     else {};
+
+  # Use localModelsFromFiles instead of localModels for model entries
 
   validDefault =
     registry ? default && builtins.isAttrs registry.default && (registry.default ? provider) && builtins.isString registry.default.provider && (registry.default ? name) && builtins.isString registry.default.name;
@@ -213,8 +293,9 @@
     localModels;
 
   # Swap config generation (ticket #37): per-model llama-server commands are
-  # derived from the same registry options. models.json stays the single
-  # source of truth; the hand-maintained swap config is retired.
+  # derived from the same registry options. The split registry (config.json +
+  # models/<key>.json) is the single source of truth; the hand-maintained swap
+  # config is retired.
   mkRegistryOpts = entry:
     if entry ? options && builtins.isAttrs entry.options
     then entry.options
@@ -447,7 +528,7 @@
 
   # The idle thresholds are registry data, not code constants (spec #34): the
   # plugin reads them from this generated file rather than hard-coding them, so
-  # retuning is an edit to models.json.
+  # retuning is an edit to config.json's `unloadPolicy`.
   unloadPolicy = registry.unloadPolicy or {};
   # Read defensively: a malformed registry must surface as a readable
   # assertion below, not as `attribute 'idleThresholdSeconds' missing` from
@@ -618,7 +699,8 @@ Service = {
       assertion = false;
       message = "llm-agent ${message}";
     })
-    (registryErrors ++ generatedConfigErrors ++ backendError ++ policyErrors)
+    (topJsonErrors ++ modelListErrors ++ modelFileErrors ++ duplicateModelErrors
+      ++ registryErrors ++ generatedConfigErrors ++ backendError ++ policyErrors)
     ++ (lib.optional (!(config.systemd.user.services ? llama-swap)) {
       assertion = false;
       message = "llm-agent the always-on llama-swap service must be defined";
