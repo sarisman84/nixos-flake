@@ -681,14 +681,33 @@ Service = {
     Install.WantedBy = [ "default.target" ];
   };
 
-  # environment.d is read when the user manager starts, so the new values only
-  # reach units started after the reload. Restarting the manager is what makes
-  # them visible to GUI apps launched afterwards.
-  home.activation.llamaAgentEnv = lib.hm.dag.entryAfter [ "home-manager-files" ] ''
-    install -Dm600 ${envActivation} "$HOME/.config/environment.d/.llm-agent-activation"
-    HOME="$HOME" ${envActivation}
-    systemctl --user daemon-reload 2>/dev/null || true
-  '';
+    # environment.d is read when the user manager starts, so the new values only
+    # reach units started after the reload. Restarting the manager is what makes
+    # them visible to GUI apps launched afterwards.
+    #
+    # The always-on llama-swap backend keeps its model registry in memory from
+    # startup, and a registry-only deploy leaves its unit file byte-identical,
+    # so systemd never restarts it on its own: new model IDs would 404 as
+    # "model not found" until a manual restart. Restarting here — after the new
+    # config.yaml is on disk and the manager has re-read environment.d — makes
+    # every `config build` pick up the registry. When the user manager is
+    # unreachable (a deploy outside a user session) the restart is skipped with
+    # a warning; the service then picks the new config up at the next session
+    # start. A restart failure with the manager reachable fails the deploy: a
+    # stale backend after a registry change is the bug this exists to prevent.
+    home.activation.llamaAgentEnv = lib.hm.dag.entryAfter [ "home-manager-files" ] ''
+      install -Dm600 ${envActivation} "$HOME/.config/environment.d/.llm-agent-activation"
+      HOME="$HOME" ${envActivation}
+      systemctl --user daemon-reload 2>/dev/null || true
+      if out=$(systemctl --user restart llama-swap 2>&1); then
+        :
+      elif printf '%s' "$out" | grep -q "connect to.*bus"; then
+        echo "llm-agent: user manager unreachable; llama-swap will pick up the new registry at session start" >&2
+      else
+        echo "llm-agent: failed to restart llama-swap after deploy: $out" >&2
+        exit 1
+      fi
+    '';
 
   home.file.".config/opencode/opencode.json".text = builtins.toJSON opencodeConfig;
   home.file.".config/opencode/AGENTS.md".source = ./AGENTS.md;
