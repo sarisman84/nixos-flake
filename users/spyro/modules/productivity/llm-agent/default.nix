@@ -77,10 +77,14 @@
 
   # Combine all configuration. Guarded access so a malformed config.json
   # (degraded to {}) reports via the checks below rather than throwing here.
+  # The key MUST be quoted: an unquoted `llama.cpp` attr name is parsed by Nix
+  # as the key "llama" (truncated at the dot), which would not match the
+  # quoted "llama.cpp" every consumer (registryErrors, localModels, the opencode
+  # provider block) uses to look the section up.
   combinedRegistry = {
     default = if globalConfig ? default then globalConfig.default else {};
     unloadPolicy = if globalConfig ? unloadPolicy then globalConfig.unloadPolicy else {};
-    llama.cpp = localModelsFromFiles;
+    "llama.cpp" = localModelsFromFiles;
     opencode = cloudModels;
   };
 
