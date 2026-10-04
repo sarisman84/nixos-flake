@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-After editing `default.nix` or `models.json`, deploy with:
+After editing `default.nix` or the registry (`config.json`, `models/*.json`), deploy with:
 
 ```bash
 config build two-b
@@ -53,9 +53,9 @@ opencode --model llama.cpp/gpt-oss-20b run "hi" # local, one-shot
 opencode --model opencode/big-pickle            # cloud model
 ```
 
-Local model keys are the keys under `llama.cpp` in `models.json`; cloud keys are
-under `opencode`. The key is the identity sent on the wire — it must match the
-model ID in the generated swap config.
+Local model keys are the `models/<key>.json` file names (the keys listed in
+`config.json`); cloud keys are under `cloud-models.json`. The key is the identity
+sent on the wire — it must match the model ID in the generated swap config.
 
 Switching models in the TUI picker hot-swaps the resident model. You do not need
 to restart opencode or the backend.
@@ -79,7 +79,7 @@ asserts it.
 ## Verifying registry validation
 
 ```bash
-nix flake check          # malformed models.json fails here, with a message
+nix flake check          # a malformed registry file fails here, with a message
 ```
 
 Registry mistakes surface at build time, never at inference time.
@@ -115,7 +115,7 @@ back in.
 ## The unload policy
 
 A session going idle past the threshold unloads the resident model. The policy is
-an opencode plugin; the thresholds live in `models.json` under `unloadPolicy` and
+an opencode plugin; the thresholds live in `config.json` under `unloadPolicy` and
 reach the plugin through the generated `~/.config/llama-swap/unload-policy.json`.
 
 ```bash

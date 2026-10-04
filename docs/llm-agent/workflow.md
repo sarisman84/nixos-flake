@@ -31,7 +31,7 @@ Rebuild alone never reaches the running process. After changing anything the bac
 
 ## Configuration flow
 
-`models.json` is the single source of truth. `default.nix` derives everything else, and `nix flake check` asserts both the registry shape and the generated artefacts:
+The registry (`config.json` + `models/*.json` + `cloud-models.json`) is the single source of truth. `default.nix` derives everything else, and `nix flake check` asserts both the registry shape and the generated artefacts:
 
 | Edit this | It generates | Read by |
 |---|---|---|
@@ -41,7 +41,7 @@ Rebuild alone never reaches the running process. After changing anything the bac
 | `unloadPolicy` | `~/.config/llama-swap/unload-policy.json` | the unload plugin |
 | `policy/*.ts` | `plugins/llm-agent-unload.ts` (single spliced file) | opencode at startup |
 
-Retuning is an edit to `models.json`, then the 3-tier workflow (`nix flake check` → build → `config build two-b`) plus a service restart when the backend is affected.
+Retuning is an edit to a `models/<key>.json` file (or `config.json`), then the 3-tier workflow (`nix flake check` → build → `config build two-b`) plus a service restart when the backend is affected.
 
 ## Unload policy lifecycle
 
@@ -62,5 +62,5 @@ cat "$state/heartbeat.json"                    # missing = plugin not loaded
 | `Internal Server Error` on a local model | upstream `llama-server` died at startup; journal shows `upstream command exited prematurely` | run the generated `llama-server` command by hand — `llama-swap` discards its stderr, which holds the real error (usually VRAM, see `nvidia-smi`) |
 | Heartbeat missing | plugin failed to load | inspect the deployed file's imports; only `node:` builtins may appear |
 | Unit fails preflight | stray backend holds the port | `pkill -f '(^|/)llama-swap( |$)'`, then restart |
-| Changed `models.json`, nothing different | running process still has the old file | `systemctl --user restart llama-swap` |
+| Changed the registry, nothing different | running process still has the old file | `systemctl --user restart llama-swap` |
 | API keys missing in desktop app | user manager predates the key | re-activate or restart the user manager (`env/*.env` → `environment.d/50-llm-agent.conf`, never the store) |

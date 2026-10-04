@@ -1,0 +1,26 @@
+{
+  "displayName": "GPT-OSS 20B fast",
+  "hfRef": "unsloth/gpt-oss-20b-GGUF:UD-Q4_K_XL",
+  "options": {
+    "ctxSize": 131072,
+    "outputLimit": 16384,
+    "gpuLayers": -1,
+    "cacheTypeK": "q8_0",
+    "cacheTypeV": "q8_0",
+    "reasoningBudget": null,
+    "ttl": 0,
+    "temperature": 1.0,
+    "topP": 1.0,
+    "topK": 64,
+    "minP": 0.0,
+    "specProfile": {
+      "enabled": false
+    },
+    "extraArgs": [
+      "--flash-attn",
+      "on",
+      "--reasoning-effort",
+      "low"
+    ]
+  }
+}

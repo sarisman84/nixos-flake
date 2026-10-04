@@ -1,0 +1,19 @@
+{
+  "default": {
+    "provider": "llama.cpp",
+    "name": "qwen3-30b-a3b"
+  },
+  "unloadPolicy": {
+    "idleThresholdSeconds": 300,
+    "settleSeconds": 15
+  },
+  "models": [
+    "qwen3-30b-a3b",
+    "qwen3-30b-a3b-200k",
+    "qwen3-30b-a3b-ngram",
+    "qwen3.8-27b",
+    "qwen3.8-27b-200k",
+    "gpt-oss-20b",
+    "mistral-small-3.2-24b"
+  ]
+}

@@ -40,15 +40,18 @@ _Avoid_: thinking budget, reasoning tokens
 **cacheTypeK / cacheTypeV**
 Split KV-cache quantization formats. Determines memory footprint per token of context. Bare `cacheType` is shorthand for both. Quantized `cacheTypeV` requires flash attention.
 
-**mtpProfile**
-Multi-Token Prediction tuning. Speed XOR max context, never implicit.
+**specProfile**
+Speculative decoding tuning — any `--spec-type` (draft-*, ngram-*, MTP), not just Multi-Token Prediction. `specType` is validated against the llama.cpp flag list. Speed XOR max context, never implicit.
+
+**sampling params**
+`temperature`, `topP`, `topK`, `minP`. Baked into the `llama-server` command as the server-side baseline: opencode sends no sampling params for custom models, so the CLI values are what takes effect. An agent-level `temperature` overrides per session.
 
 **efficient model**
-A model entry chosen for capability rather than cost: large context, reasoning budget enabled. The opposite of a **cheap model**.
+A model entry chosen for capability rather than cost: reasoning enabled (a reasoning budget, or a reasoning model). The opposite of a **cheap model**.
 _Avoid_: reasoning model, big model, premium model
 
 **cheap model**
-A model entry chosen for cost rather than capability: small context, no reasoning budget. Used where quality is not load-bearing.
+A model entry chosen for cost rather than capability: no reasoning. Context size is chosen independently — a cheap model can carry a large context. Used where quality is not load-bearing.
 _Avoid_: efficient model, small model, fast model, light model
 
 ### Runtime
@@ -98,4 +101,4 @@ RTX 5090 (32 GB VRAM), 64 GB system RAM, Ryzen 9950X3D. Constrains the maximum f
 
 ---
 
-Decisions are recorded in [`docs/adr/`](./adr/). Registry structure is in [`docs/llm-agent/registry.md`](./llm-agent/registry.md).
+Decisions are recorded in [`docs/adr/`](./adr/). Registry structure is in [`docs/llm-agent/registry.md`](./llm-agent/registry.md); tuning guidance (which values, and why) is in [`docs/llm-agent/tuning.md`](./llm-agent/tuning.md).

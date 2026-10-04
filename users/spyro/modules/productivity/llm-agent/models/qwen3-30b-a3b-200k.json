@@ -1,0 +1,22 @@
+{
+  "_comment": "q4_0 KV: at 200k context the q8_0 cache is 9.8 GB -> 30.0 GB total, ~2 GB headroom (fragile after #55). q4_0 -> 25.1 GB total, 7 GB headroom. See docs/llm-agent/tuning.md.",
+  "displayName": "Qwen3 30B-A3B fast (200k opt-in)",
+  "hfRef": "unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:UD-Q4_K_XL",
+  "options": {
+    "ctxSize": 200000,
+    "outputLimit": 16384,
+    "gpuLayers": -1,
+    "cacheTypeK": "q4_0",
+    "cacheTypeV": "q4_0",
+    "reasoningBudget": 0,
+    "ttl": 0,
+    "temperature": 0.2,
+    "specProfile": {
+      "enabled": false
+    },
+    "extraArgs": [
+      "--flash-attn",
+      "on"
+    ]
+  }
+}
