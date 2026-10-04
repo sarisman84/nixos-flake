@@ -1,6 +1,6 @@
 # llm-agent model tuning
 
-Tuning is a registry edit: every knob is an `options` field in `models.json` ([registry.md](./registry.md)), and `default.nix` bakes it into the generated `llama-server` command. `nix flake check` validates entries; `config build two-b` deploys.
+Tuning is a registry edit: every knob is an `options` field in a `models/<key>.json` file ([registry.md](./registry.md)), and `default.nix` bakes it into the generated `llama-server` command. `nix flake check` validates entries; `config build two-b` deploys.
 
 Tiers run easy to hard. Start at T0; go deeper only with a symptom (OOM, loops, slowness, wrong temperature).
 
