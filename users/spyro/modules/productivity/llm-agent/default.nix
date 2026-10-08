@@ -638,6 +638,77 @@ ${seamImport}" ] [ "
     fi
   '';
 
+  # Unloads the resident model before the host suspends. There is no
+  # sleep.target in the user manager, so this holds a `sleep` delay lock and
+  # listens for logind's PrepareForSleep on the system bus: the lock gives the
+  # unload up to InhibitDelayMaxSec (default 5 s) to finish, and watching the
+  # signal without the lock is racy. Documented in
+  # docs/llm-agent/llama-server-shutdown.md.
+  #
+  # The lock is released right after the unload (instead of held across the
+  # suspend) so the host sleeps at once rather than waiting out the full
+  # delay, and re-taken on resume to re-arm the next cycle. The inhibitor runs
+  # detached (setsid) so one group kill takes both it and its `sleep` child
+  # down; a plain kill would orphan the sleeper once per cycle.
+  sleepGuard = pkgs.writeShellScript "llama-swap-sleep-guard" ''
+    shopt -s lastpipe
+    set -euo pipefail
+    BACKEND="http://${llamaHost}:${llamaPort}"
+
+    unload() {
+      ${pkgs.curl}/bin/curl -fsS -X POST --max-time 10 "$BACKEND/api/models/unload" >/dev/null 2>&1 || true
+    }
+
+    inhibitor_pid=""
+    start_inhibitor() {
+      ${pkgs.util-linux}/bin/setsid ${pkgs.systemd}/bin/systemd-inhibit \
+        --what=sleep \
+        --mode=delay \
+        --who="llama-swap-sleep-guard" \
+        --why="Unload resident model before suspend" \
+        ${pkgs.coreutils}/bin/sleep infinity &
+      inhibitor_pid=$!
+    }
+    stop_inhibitor() {
+      if [[ -n "$inhibitor_pid" ]]; then
+        kill -- -"$inhibitor_pid" 2>/dev/null || true
+        wait "$inhibitor_pid" 2>/dev/null || true
+      fi
+      inhibitor_pid=""
+    }
+    cleanup() { stop_inhibitor; }
+    # A trapped TERM does not end the script on its own — without the explicit
+    # exit the loop would go back to blocking on read. 143 is the conventional
+    # "killed by SIGTERM" status, so an unexpected kill still trips
+    # Restart=on-failure while an explicit `systemctl stop` stays a clean stop.
+    trap cleanup EXIT
+    trap 'cleanup; exit 143' TERM INT
+
+    start_inhibitor
+
+    # dbus-monitor prints the PrepareForSleep argument as `boolean true/false`
+    # on its own line. The match rule selects only that signal, so any boolean
+    # seen here is the suspend/resume flag.
+    ${pkgs.dbus}/bin/dbus-monitor \
+      --system "type='signal',interface='org.freedesktop.login1.Manager',member='PrepareForSleep'" 2>/dev/null |
+    while read -r line; do
+      case "$line" in
+        *"boolean true"*)
+          # Suspending. Unload first (curl blocks until the server is stopped),
+          # then release the delay lock so suspend proceeds at once.
+          unload
+          stop_inhibitor
+          ;;
+        *"boolean false"*)
+          # Resumed. Re-take the lock unless it is still held.
+          if [[ -z "$inhibitor_pid" ]] || ! kill -0 "$inhibitor_pid" 2>/dev/null; then
+            start_inhibitor
+          fi
+          ;;
+      esac
+    done
+  '';
+
   envActivation = pkgs.writeShellScript "llm-agent-env-activation" ''
     target="$HOME/.config/environment.d/50-llm-agent.conf"
     mkdir -p "$(dirname "$target")"
@@ -681,6 +752,25 @@ Service = {
     Install.WantedBy = [ "default.target" ];
   };
 
+    # Unloads the resident model before suspend (see the sleepGuard script
+    # above). The backend itself stays up across sleep; only the resident
+    # model is released. Independent of the backend unit — an unload against a
+    # down backend is a harmless no-op — and ordered after it so a fresh boot
+    # arms the guard once the endpoint exists.
+    systemd.user.services.llama-swap-sleep-guard = {
+      Unit = {
+        Description = "Unload resident llama-server before host suspend";
+        After = [ "llama-swap.service" ];
+      };
+      Service = {
+        Type = "exec";
+        ExecStart = "${sleepGuard}";
+        Restart = "on-failure";
+        RestartSec = "2s";
+      };
+      Install.WantedBy = [ "default.target" ];
+    };
+
     # environment.d is read when the user manager starts, so the new values only
     # reach units started after the reload. Restarting the manager is what makes
     # them visible to GUI apps launched afterwards.
@@ -716,6 +806,13 @@ Service = {
         echo "llm-agent: failed to restart llama-swap after deploy: $out" >&2
         exit 1
       fi
+      # The sleep guard carries no config — only store paths — so a missed
+      # restart leaves a working guard behind. Warn, never fail the deploy.
+      if out=$(${pkgs.systemd}/bin/systemctl --user restart llama-swap-sleep-guard 2>&1); then
+        :
+      else
+        echo "llm-agent: could not restart llama-swap-sleep-guard: $out" >&2
+      fi
     '';
 
   home.file.".config/opencode/opencode.json".text = builtins.toJSON opencodeConfig;
@@ -736,5 +833,9 @@ Service = {
     ++ (lib.optional (!(config.systemd.user.services ? llama-swap)) {
       assertion = false;
       message = "llm-agent the always-on llama-swap service must be defined";
+    })
+    ++ (lib.optional (!(config.systemd.user.services ? llama-swap-sleep-guard)) {
+      assertion = false;
+      message = "llm-agent the suspend-time unload guard must be defined";
     });
 }
