@@ -27,6 +27,14 @@ curl -s http://127.0.0.1:8080/running # what is resident right now
 
 An `ExecStartPre` preflight fails the unit instead of crash-looping when a stray `llama-swap` already holds `:8080` — kill it with `pkill -f '(^|/)llama-swap( |$)'`.
 
+`llama-swap-sleep-guard` is a second user service that unloads the resident model before the host suspends: it holds a `sleep` delay lock and watches logind's `PrepareForSleep` on the system bus (there is no `sleep.target` in the user manager). The backend itself stays up across sleep; only the resident model is released. An unload against a down backend is a harmless no-op. Details and primary sources in [`llama-server-shutdown.md`](./llama-server-shutdown.md).
+
+```bash
+systemctl --user status llama-swap-sleep-guard  # is the guard up?
+systemd-inhibit --list | grep sleep-guard       # delay lock held?
+journalctl --user -u llama-swap-sleep-guard -n 20
+```
+
 Rebuild alone never reaches the running process. After changing anything the backend reads (`config.yaml`), restart the service; the new file only takes effect on next start.
 
 ## Configuration flow
@@ -45,7 +53,7 @@ Retuning is an edit to a `models/<key>.json` file (or `config.json`), then the 3
 
 ## Unload policy lifecycle
 
-Each opencode process loads the plugin (singleton-guarded; the factory runs more than once per process), writes a heartbeat, and publishes a **lease** under `$XDG_STATE_HOME/llm-agent/`. When every live lease has been **idle** past `idleThresholdSeconds` (300 s) and the **settle delay** (15 s) has elapsed with no activity, the plugin sends `POST /api/models/unload` and VRAM returns to baseline. Backend-side `ttl` stays `0`; the plugin owns the decision (see [`0002-plugin-owned-unload-policy.md`](../adr/0002-plugin-owned-unload-policy.md)).
+Each opencode process loads the plugin (singleton-guarded; the factory runs more than once per process), writes a heartbeat, and publishes a **lease** under `$XDG_STATE_HOME/llm-agent/`. When every live lease has been **idle** past `idleThresholdSeconds` (300 s) and the **settle delay** (15 s) has elapsed with no activity, the plugin sends `POST /api/models/unload` and VRAM returns to baseline. An exiting instance unloads in its `dispose` hook too, when the remaining leases permit it — last one out, or every other live lease already idle past the threshold. Backend-side `ttl` stays `0`; the plugin owns the decision (see [`0002-plugin-owned-unload-policy.md`](../adr/0002-plugin-owned-unload-policy.md)).
 
 ```bash
 cat ~/.config/llama-swap/unload-policy.json   # thresholds in force
@@ -63,4 +71,5 @@ cat "$state/heartbeat.json"                    # missing = plugin not loaded
 | Heartbeat missing | plugin failed to load | inspect the deployed file's imports; only `node:` builtins may appear |
 | Unit fails preflight | stray backend holds the port | `pkill -f '(^|/)llama-swap( |$)'`, then restart |
 | Changed the registry, nothing different | running process still has the old file | `systemctl --user restart llama-swap` |
+| Every suspend waits out the full delay | guard down, no delay lock held | `systemctl --user status llama-swap-sleep-guard` |
 | API keys missing in desktop app | user manager predates the key | re-activate or restart the user manager (`env/*.env` → `environment.d/50-llm-agent.conf`, never the store) |

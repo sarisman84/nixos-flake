@@ -105,6 +105,8 @@ back in.
 | Evaluation | `nix flake check` | passes |
 | Build | `sudo nixos-rebuild build --flake .#two-b` | succeeds |
 | Service defined | `systemctl --user status llama-swap` | active (after switch) |
+| Sleep guard up | `systemctl --user status llama-swap-sleep-guard` | active (after switch) |
+| Guard holds delay lock | `systemd-inhibit --list \| grep sleep-guard` | present |
 | Backend reachable | `curl -s http://127.0.0.1:8080/health` | OK |
 | Local model loads | pick a local model, send a message | reply |
 | Hot swap | switch model mid-session | reply, `/running` shows the new one |
@@ -173,6 +175,29 @@ that guard exists only on the swap path. Unload terminates a server mid-request
 and the client sees a truncated stream. Until #50 lands, in-flight state is
 self-reported from the plugin's own sessions, so **do not unload by hand while
 another instance is generating**.
+
+### Verifying dispose unload
+
+```bash
+curl -s http://127.0.0.1:8080/running     # resident model listed
+# ... quit every opencode (CLI and desktop) ...
+curl -s http://127.0.0.1:8080/running     # {"running":[]} — last one out unloaded
+```
+
+Quitting while a sibling instance is mid-generation must **not** unload: the
+exiting instance reads the remaining leases first and a busy peer vetoes.
+
+### Verifying the sleep guard
+
+Suspending the machine is the real check; short of that:
+
+```bash
+systemctl --user status llama-swap-sleep-guard   # active
+systemd-inhibit --list | grep sleep-guard         # delay lock held
+```
+
+No delay lock means suspends proceed with no unload window — treat it like a
+missing heartbeat and check the unit's logs first.
 
 ### Unit tests
 
