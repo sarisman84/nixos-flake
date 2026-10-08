@@ -360,4 +360,40 @@ describe("dispose", () => {
     await hooks.dispose!()
     expect(leases()).toEqual([])
   })
+
+  test("unloads when the exiting instance is the last live one", async () => {
+    const clock = { now: 1_000_000 }
+    const hooks = createUnloadPolicy({ client, directory: root }, CONFIG, "last-out", () => clock.now) as any
+    await hooks["chat.params"]({ sessionID: "s1", model: { providerID: "llama.cpp", id: "gpt-oss-20b" } })
+    await hooks.event({ event: { type: "session.status", properties: { sessionID: "s1", status: { type: "busy" } } } })
+    clock.now += 10_000
+    await hooks.event({ event: { type: "session.status", properties: { sessionID: "s1", status: { type: "idle" } } } })
+    clock.now += 400_000
+    await hooks.dispose()
+    expect(unloadCalls).toBe(1)
+    expect(leases()).toEqual([])
+  })
+
+  test("does not unload while a sibling instance is mid-generation", async () => {
+    const clock = { now: 1_000_000 }
+    const leaving = createUnloadPolicy({ client, directory: root }, CONFIG, "leaving", () => clock.now) as any
+    const staying = createUnloadPolicy({ client, directory: root }, CONFIG, "staying", () => clock.now) as any
+    // The leaving instance goes idle past the threshold...
+    await leaving["chat.params"]({ sessionID: "s1", model: { providerID: "llama.cpp", id: "gpt-oss-20b" } })
+    await leaving.event({ event: { type: "session.status", properties: { sessionID: "s1", status: { type: "busy" } } } })
+    clock.now += 10_000
+    await leaving.event({ event: { type: "session.status", properties: { sessionID: "s1", status: { type: "idle" } } } })
+    clock.now += 400_000
+    // ...but the sibling is mid-generation on a local model.
+    await staying["chat.params"]({ sessionID: "s2", model: { providerID: "llama.cpp", id: "gpt-oss-20b" } })
+    await staying.event({ event: { type: "session.status", properties: { sessionID: "s2", status: { type: "busy" } } } })
+
+    await leaving.dispose()
+    expect(unloadCalls).toBe(0)
+    expect(leases()).toEqual(["staying.json"])
+
+    // The sibling leaving last does unload.
+    await staying.dispose()
+    expect(unloadCalls).toBe(1)
+  })
 })

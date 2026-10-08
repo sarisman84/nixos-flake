@@ -450,6 +450,28 @@ export function createUnloadPolicy(
         // A lease left behind is stale, not harmful: the reader resolves
         // liveness from the process.
       }
+      // Last one out closes the resident model. The tick only runs while this
+      // process is alive, so without this an exiting last instance would leave
+      // the model resident until the next opencode starts (backend ttl is 0).
+      // The unload is gated on the remaining leases: any live peer that is
+      // busy, active, settling or unobserved vetoes, and an unreadable set
+      // refuses. An empty set means we were the last one out, which is
+      // permission — not evidence of breakage, as it would be on the tick.
+      try {
+        const leaseSet = readLeaseSet(leaseDir())
+        if (!leaseSet.readable) return
+        if (leaseSet.leases.filter((l) => l.alive).length === 0) {
+          await unload()
+          return
+        }
+        const decision = shouldUnload(leaseSet, [], now(), {
+          idleThresholdMs: config.idleThresholdSeconds * 1000,
+          settleMs: config.settleSeconds * 1000,
+        })
+        if (decision.unload) await unload()
+      } catch (error) {
+        log("warn", "dispose unload check failed", { error: String(error) })
+      }
     },
   }
 }
