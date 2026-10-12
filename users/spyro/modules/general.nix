@@ -10,6 +10,7 @@
       postman
       ncdu
       dust
+      proton-vpn
     ];
   };
 }
