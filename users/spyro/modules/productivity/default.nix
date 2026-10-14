@@ -21,6 +21,7 @@
       go
       python3
       unzip
+      anydesk
     ];
   };
 }
