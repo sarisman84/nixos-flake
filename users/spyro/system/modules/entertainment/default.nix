@@ -2,6 +2,7 @@
 {
   imports = [
     ./rsi-launcher.nix
+    ./maplestory.nix
     # ./nuhxboard.nix
   ];
 

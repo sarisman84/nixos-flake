@@ -1,0 +1,62 @@
+{ pkgs, ... }:
+
+let
+  # Launch MapleStory (Steam app 216150, GE-Proton) inside gamescope so the
+  # game renders at a lower internal resolution (small UI) and is upscaled to
+  # the native 1440p panel. Magpie is Windows-only; gamescope is the Linux
+  # equivalent (Valve's SteamOS microcompositor).
+  #
+  # Keep Steam running in the background so the game can authenticate; the
+  # game (and its anti-cheat) is launched directly through the Proton prefix.
+  #
+  # NOTE: the ''${...} sequences below are escaped so Nix does not treat the
+  # bash ${VAR:-default} expansions as Nix string interpolation.
+  maplestory-gamescope = pkgs.writeScript "maplestory-gamescope" ''
+    #!${pkgs.bash}/bin/bash
+    set -euo pipefail
+
+    STEAM_DIR="''${STEAM_HOME:-$HOME/.local/share/Steam}"
+    APPID="216150"
+    PROTON_NAME="''${MAPLE_PROTON:-GE-Proton11-3}"
+    PROTON="$STEAM_DIR/compatibilitytools.d/$PROTON_NAME/proton"
+    PREFIX="$STEAM_DIR/steamapps/compatdata/$APPID"
+    GAME_EXE="$STEAM_DIR/steamapps/common/MapleStory/MapleStory.exe"
+
+    # Internal game resolution (lower = smaller UI). 1080p is the sweet spot.
+    GAME_W="''${MAPLE_GAME_W:-1920}"
+    GAME_H="''${MAPLE_GAME_H:-1080}"
+
+    # Output/display resolution (native panel).
+    OUT_W="''${MAPLE_OUT_W:-2560}"
+    OUT_H="''${MAPLE_OUT_H:-1440}"
+
+    # Upscaler filter: fsr | nis | linear | nearest | pixel
+    FILTER="''${MAPLE_FILTER:-fsr}"
+
+    for f in "$PROTON" "$GAME_EXE"; do
+      if [ ! -e "$f" ]; then
+        echo "maplestory-gamescope: missing $f" >&2
+        exit 1
+      fi
+    done
+
+    export STEAM_COMPAT_CLIENT_INSTALL_PATH="$STEAM_DIR"
+    export STEAM_COMPAT_DATA_PATH="$PREFIX"
+
+    exec ${pkgs.gamescope}/bin/gamescope \
+      --backend wayland \
+      -w "$GAME_W" -h "$GAME_H" \
+      -W "$OUT_W" -H "$OUT_H" \
+      -S fit \
+      -F "$FILTER" \
+      -- \
+      "$PROTON" run "$GAME_EXE"
+  '';
+in
+
+{
+  environment.systemPackages = [
+    pkgs.gamescope
+    maplestory-gamescope
+  ];
+}
