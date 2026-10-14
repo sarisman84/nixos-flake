@@ -43,6 +43,10 @@ let
     export STEAM_COMPAT_CLIENT_INSTALL_PATH="$STEAM_DIR"
     export STEAM_COMPAT_DATA_PATH="$PREFIX"
 
+    # Make the Vulkan loader findable: Proton's launcher does
+    # CDLL('libvulkan.so.1'), which fails unless the loader is on the path.
+    export LD_LIBRARY_PATH="${pkgs.vulkan-loader}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
     exec ${pkgs.gamescope}/bin/gamescope \
       --backend wayland \
       -w "$GAME_W" -h "$GAME_H" \
