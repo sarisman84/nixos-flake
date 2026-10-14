@@ -53,11 +53,28 @@ let
       "$PROTON" run "$GAME_EXE"
   '';
 
+  # freedesktop entry so KDE Plasma (KRunner + start menu) can find it.
+  # Installed into share/applications/, which lands in
+  # /run/current-system/sw/share/applications (on XDG_DATA_DIRS).
+  desktop = pkgs.writeText "maplestory-gamescope.desktop" ''
+    [Desktop Entry]
+    Type=Application
+    Version=1.0
+    Name=MapleStory
+    GenericName=MMORPG
+    Comment=Launch MapleStory via gamescope (1080p render, upscaled to 1440p)
+    Exec=maplestory-gamescope
+    Icon=applications-games
+    Categories=Game;
+    Terminal=false
+  '';
+
   # buildEnv (used by environment.systemPackages) can only merge directory
   # packages, so wrap the script file into a proper $out/bin/ package.
   maplestory-gamescope = pkgs.runCommand "maplestory-gamescope" { } ''
-    mkdir -p $out/bin
+    mkdir -p $out/bin $out/share/applications
     install -m 0755 ${script} $out/bin/maplestory-gamescope
+    install -m 0644 ${desktop} $out/share/applications/maplestory-gamescope.desktop
   '';
 in
 
