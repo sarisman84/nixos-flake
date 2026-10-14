@@ -11,7 +11,7 @@ let
   #
   # NOTE: the ''${...} sequences below are escaped so Nix does not treat the
   # bash ${VAR:-default} expansions as Nix string interpolation.
-  maplestory-gamescope = pkgs.writeScript "maplestory-gamescope" ''
+  script = pkgs.writeText "maplestory-gamescope" ''
     #!${pkgs.bash}/bin/bash
     set -euo pipefail
 
@@ -51,6 +51,13 @@ let
       -F "$FILTER" \
       -- \
       "$PROTON" run "$GAME_EXE"
+  '';
+
+  # buildEnv (used by environment.systemPackages) can only merge directory
+  # packages, so wrap the script file into a proper $out/bin/ package.
+  maplestory-gamescope = pkgs.runCommand "maplestory-gamescope" { } ''
+    mkdir -p $out/bin
+    install -m 0755 ${script} $out/bin/maplestory-gamescope
   '';
 in
 
