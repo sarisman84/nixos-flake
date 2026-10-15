@@ -47,6 +47,9 @@ let
     # CDLL('libvulkan.so.1'), which fails unless the loader is on the path.
     export LD_LIBRARY_PATH="${pkgs.vulkan-loader}/lib''${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
+    # steam-run provides the FHS-like environment NixOS needs to run Wine's
+    # dynamically-linked binaries (the system ld.so is a stub that refuses
+    # generic-Linux executables).
     exec ${pkgs.gamescope}/bin/gamescope \
       --backend wayland \
       -w "$GAME_W" -h "$GAME_H" \
@@ -54,6 +57,7 @@ let
       -S fit \
       -F "$FILTER" \
       -- \
+      ${pkgs.steam-run}/bin/steam-run \
       "$PROTON" run "$GAME_EXE"
   '';
 
@@ -75,7 +79,12 @@ let
 
   # buildEnv (used by environment.systemPackages) can only merge directory
   # packages, so wrap the script file into a proper $out/bin/ package.
-  maplestory-gamescope = pkgs.runCommand "maplestory-gamescope" { } ''
+  # The launcher references gamescope/vulkan-loader/steam-run only as store
+  # paths inside the script text, so declare them as deps to keep them
+  # GC-safe.
+  maplestory-gamescope = pkgs.runCommand "maplestory-gamescope" {
+    nativeBuildInputs = [ pkgs.gamescope pkgs.vulkan-loader pkgs.steam-run ];
+  } ''
     mkdir -p $out/bin $out/share/applications
     install -m 0755 ${script} $out/bin/maplestory-gamescope
     install -m 0644 ${desktop} $out/share/applications/maplestory-gamescope.desktop
