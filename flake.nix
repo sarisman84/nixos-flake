@@ -35,6 +35,13 @@
       url = "github:noctalia-dev/noctalia";
       inputs.nixpkgs.follows = "nixpkgs"; # this line is optional, prevents downloading two versions of nixpkgs but disables cache
     };
+
+    # Web UI / server for OpenCode sessions. Pinned to the release tag; the
+    # package is x86_64-linux only (see upstream flake).
+    openchamber = {
+      url = "github:openchamber/openchamber/v2.5.0";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs = inputs @ {
