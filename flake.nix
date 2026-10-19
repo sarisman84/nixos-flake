@@ -37,10 +37,11 @@
     };
 
     # Web UI / server for OpenCode sessions. Pinned to the release tag; the
-    # package is x86_64-linux only (see upstream flake).
+    # package is x86_64-linux only (see upstream flake). No nixpkgs follows:
+    # the recipe's baked dependency hashes are tied to this flake's own
+    # locked nixpkgs (see users/spyro/modules/productivity/openchamber/).
     openchamber = {
       url = "github:openchamber/openchamber/v2.5.0";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 

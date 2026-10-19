@@ -13,6 +13,7 @@
     ./teams.nix
     ./web.nix
     ./neovim.nix
+    ./openchamber
   ];
 
   home = {
