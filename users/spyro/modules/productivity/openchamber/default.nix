@@ -1,5 +1,6 @@
 {
   flake-inputs,
+  pkgs,
   lib,
   ...
 }:
@@ -22,10 +23,11 @@ let
     type = "tarball";
     url = "https://api.github.com/repos/NixOS/nixpkgs/tarball/${ocLock.nodes.nixpkgs.locked.rev}";
     narHash = ocLock.nodes.nixpkgs.locked.narHash;
-  }) { };
+  }) {
+    system = pkgs.stdenv.hostPlatform.system;
+  };
 
   openchamber = ocNixpkgs.callPackage ./package.nix {
-    inherit openchamberFlake;
     self = openchamberFlake;
     version = (builtins.fromJSON (builtins.readFile (openchamberFlake + "/package.json"))).version;
     opencodeCli = openchamberFlake.packages.x86_64-linux.opencode-cli;
