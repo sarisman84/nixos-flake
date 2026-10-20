@@ -23,6 +23,9 @@
       python3
       unzip
       anydesk
+      docker
+      docker-compose
+      docker-compose-language-service
     ];
   };
 }

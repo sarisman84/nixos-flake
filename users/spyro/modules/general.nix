@@ -3,6 +3,7 @@
   home = {
     packages = with pkgs; [
       bitwarden-desktop
+      bws
       obs-studio
       vhs
       vlc
