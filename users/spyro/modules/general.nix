@@ -4,6 +4,7 @@
     packages = with pkgs; [
       bitwarden-desktop
       obs-studio
+      qemu_full
       vhs
       vlc
       filezilla
