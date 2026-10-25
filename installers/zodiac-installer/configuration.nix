@@ -15,15 +15,19 @@
   ];
 
   # Headless SSH access — no console or keyboard needed.
+  # Password auth enabled temporarily for QEMU install proof (#71).
   services.openssh.enable = true;
   services.openssh.settings = {
-    PasswordAuthentication = false;
-    PermitRootLogin = "prohibit-password";
+    PasswordAuthentication = true;
+    PermitRootLogin = "yes";
     KbdInteractiveAuthentication = false;
   };
 
-  # Initial root password for emergency/console access (QEMU proof uses this).
+  # Initial root password + SSH key for QEMU install proof access.
   users.users.root.initialPassword = "zodiac";
+  users.users.root.openssh.authorizedKeys.keys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFnZeIOAInTihizsfXDayAdWGDJNWmJome3rtYEnO64u qemu-test"
+  ];
 
   # Nix flakes support for `nixos-install --flake ...` from the installer.
   nix.settings.experimental-features = [
@@ -32,7 +36,7 @@
   ];
 
   # Tools needed for installation.
-  environment.systemPackages = with pkgs; [ git ];
+  environment.systemPackages = with pkgs; [ git disko ];
 
   # Filesystem support for the target disk (btrfs root, vfat EFI).
   boot.supportedFilesystems = lib.mkForce [ "btrfs" "vfat" "xfs" ];
