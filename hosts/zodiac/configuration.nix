@@ -29,12 +29,16 @@
   boot.loader.efi.canTouchEfiVariables = true;
 
   # OpenSSH — key-only auth, root login prohibited without key.
+  # QEMU test key added for install proof (#71).
   services.openssh.enable = true;
   services.openssh.settings = {
     PasswordAuthentication = false;
     PermitRootLogin = "prohibit-password";
     KbdInteractiveAuthentication = false;
   };
+  users.users.root.openssh.authorizedKeys.keys = [
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFnZeIOAInTihizsfXDayAdWGDJNWmJome3rtYEnO64u qemu-test"
+  ];
 
   # Firewall — enable, open SSH only.
   networking.firewall.enable = true;
