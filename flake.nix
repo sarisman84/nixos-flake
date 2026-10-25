@@ -58,7 +58,17 @@
     usersDir = ./users;
     desktopDir = ./desktop-env;
   in {
-    nixosConfigurations = builtins.listToAttrs (configBuilder.mkNixosConfig hostsDir usersDir desktopDir);
+    nixosConfigurations =
+      (builtins.listToAttrs (configBuilder.mkNixosConfig hostsDir usersDir desktopDir))
+      // {
+        # Bootable installer ISO for the `zodiac` headless server.
+        # Built with: nix build .#nixosConfigurations.zodiac-installer.config.system.build.isoImage
+        zodiac-installer = nixpkgs.lib.nixosSystem {
+          pkgs = nixpkgs.legacyPackages.x86_64-linux;
+          system = "x86_64-linux";
+          modules = [ ./installers/zodiac-installer/configuration.nix ];
+        };
+      };
 
     devShells = lib.genAttrs ["x86_64-linux" "aarch64-linux"] (
       system: let
