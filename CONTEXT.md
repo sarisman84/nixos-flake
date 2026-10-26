@@ -1,8 +1,10 @@
-# Context: Local LLM Serving
+# Context
+
+Vocabulary for this repo's domains. Each top-level section is a distinct context with its own glossary.
+
+## Local LLM Serving
 
 How local models are served, swapped, and de-allocated on this machine. Vocabulary for the `llm-agent` module.
-
-## Language
 
 ### The registry
 
@@ -98,6 +100,22 @@ _Avoid_: ping, keepalive, liveness probe
 
 **hardware profile**
 RTX 5090 (32 GB VRAM), 64 GB system RAM, Ryzen 9950X3D. Constrains the maximum feasible `ctxSize` for a given weight size and `cacheType` combination.
+
+## Server provisioning
+
+How a new headless server host is installed and brought up. Vocabulary for the installer ISO and the `hosts/<name>/` entries.
+
+**installer**
+A bootable, non-interactive NixOS ISO built as a flake output of this repo. It boots on the target, provides headless SSH access, and ships the tools (disko + nixos-install) to lay down a **server host** config without a console.
+_Avoid_: install media, boot disk, installer image
+
+**server host**
+A headless NixOS host entry (`hosts/<name>/`) provisioned by the **installer**: base services only (SSH + firewall + sane defaults), no GUI or desktop env, hardware-agnostic until the machine's facts arrive.
+_Avoid_: server, machine, node, box
+
+**install proof**
+The end-to-end demonstration that the **installer** works: boot the ISO in QEMU, let it install a **server host** non-interactively, and verify the installed system boots and is reachable over the network. Passing it is the gate before any bare-metal run.
+_Avoid_: test, smoke test, dry run
 
 ---
 
