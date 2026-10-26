@@ -19,6 +19,7 @@
     sharedImports.nvidia
     sharedImports.garbage-collection
     ./networking.nix
+    ./qemu.nix
   ];
 
   # Flatpak is enabled by sharedImports.general but not needed on a headless server.
