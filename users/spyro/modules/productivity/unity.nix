@@ -23,6 +23,11 @@ in {
   home.activation.unityCliBootstrap = lib.hm.dag.entryAfter ["linkGeneration"] ''
     if [ ! -x "$HOME/.local/bin/unity" ]; then
       echo "unity-cli: installing the Unity CLI..."
+      # The install script downloads the binary with a bare `curl`/`wget`
+      # from PATH (and may probe glibc via `ldd`), but the activation
+      # environment's PATH has neither — so put the store copies on PATH
+      # for the script's own runtime.
+      export PATH="${pkgs.curl}/bin:${pkgs.glibc}/bin:$PATH"
       if ! ${pkgs.curl}/bin/curl -fsSL https://unity.com/install.sh | ${pkgs.bash}/bin/bash; then
         echo "unity-cli: install failed; \`unity\` is not available. Re-run a deploy, or install manually: curl -fsSL https://unity.com/install.sh | bash" >&2
       fi
