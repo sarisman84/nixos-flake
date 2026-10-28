@@ -374,7 +374,12 @@ in {
   activation = lib.hm.dag.entryAfter ["home-manager-files"] ''
     install -Dm600 ${envActivation} "$HOME/.config/environment.d/.llm-agent-activation"
     HOME="$HOME" ${envActivation}
-    if [ -z "$XDG_RUNTIME_DIR" ]; then XDG_RUNTIME_DIR="/run/user/$UID"; fi
+    # Guard with a default expansion: a bare $XDG_RUNTIME_DIR would trip
+    # `set -u` (unbound variable) in exactly the case this guard exists for —
+    # a deploy right after a systemd restart, when the user manager is briefly
+    # unreachable and the wrapper's session import returns nothing.
+    # ($$ is Nix escaping; the generated script gets a literal default-expansion.)
+    if [ -z "$${XDG_RUNTIME_DIR:-}" ]; then XDG_RUNTIME_DIR="/run/user/$UID"; fi
     export XDG_RUNTIME_DIR
     ${pkgs.systemd}/bin/systemctl --user daemon-reload 2>/dev/null || true
     if out=$(${pkgs.systemd}/bin/systemctl --user restart llama-swap 2>&1); then
