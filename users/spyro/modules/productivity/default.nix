@@ -14,6 +14,7 @@
     ./web.nix
     ./neovim.nix
     ./openchamber
+    ./unity.nix
   ];
 
   home = {
