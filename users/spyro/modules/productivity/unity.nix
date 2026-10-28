@@ -1,9 +1,11 @@
 {
   pkgs,
   lib,
-  home,
+  config,
   ...
-}: {
+}: let
+  homeDir = config.home.homeDirectory;
+in {
   # The Unity CLI is deliberately NOT store-pinned: the flake guarantees its
   # presence (the activation hook below), and `unity self-update` keeps it
   # current. A pinned binary would go stale — the official skill warns an
@@ -12,7 +14,7 @@
 
   # The install script places the binary in ~/.local/bin, which is not on
   # PATH by default on this system.
-  home.sessionVariables.PATH = ":${home}/.local/bin";
+  home.sessionVariables.PATH = ":${homeDir}/.local/bin";
 
   # Bootstrap the CLI on first activation (or after a wiped ~/.local/bin).
   # Idempotent: a no-op while the binary is present. Warns, never fails the
