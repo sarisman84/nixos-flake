@@ -4,6 +4,7 @@
     groups = [
       "wheel"
       "networkmanager"
+      "docker"
     ];
     system-modules = [ ./system ];
   };
