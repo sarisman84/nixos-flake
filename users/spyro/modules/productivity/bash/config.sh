@@ -18,6 +18,12 @@ config() {
             ;;
         -h | --help)
             echo "Usage: config {build|update|clear} [args...]"
+            echo ""
+            echo "  build [--no-prune] <host>   Deploy; prunes to the newest"
+            echo "                               NIXOS_KEEP_GENERATIONS (3) unless"
+            echo "                               --no-prune is given."
+            echo "  update <host>               nix flake update + deploy (no prune)."
+            echo "  clear                       GC + switch to the booted config."
             return 1
             ;;
         *)
@@ -27,8 +33,24 @@ config() {
 }
 
 # Evaluate the flake and switch the system to the given host config.
+# Pass --no-prune (or -k) to keep every deployed generation instead of
+# pruning down to NIXOS_KEEP_GENERATIONS — useful when you want to preserve
+# rollback options (e.g. right after a recovery).
 _config_build() {
-    local host="$*"
+    local no_prune=0
+    local -a host_args=()
+    local arg
+    for arg in "$@"; do
+        case "$arg" in
+            --no-prune | --keep-all | -k)
+                no_prune=1
+                ;;
+            *)
+                host_args+=("$arg")
+                ;;
+        esac
+    done
+    local host="${host_args[*]}"
     local start
 
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -38,7 +60,7 @@ _config_build() {
     echo "  Evaluating flake & building system..."
     start=$SECONDS
 
-    sudo nixos-rebuild switch --flake ~/config/nixos-flake/#"$*" --show-trace
+    sudo nixos-rebuild switch --flake ~/config/nixos-flake/#"$host" --show-trace
     local status=$?
 
     local elapsed=$((SECONDS - start))
@@ -48,7 +70,12 @@ _config_build() {
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "  ✔  ${host} deployed in ${elapsed}s"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        _config_prune_generations
+        if [ "$no_prune" -eq 0 ]; then
+            _config_prune_generations
+        else
+            echo ""
+            echo "  🔒 Kept all generations (pruning skipped)"
+        fi
     else
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "  ✘  Deploy failed (exit ${status})"

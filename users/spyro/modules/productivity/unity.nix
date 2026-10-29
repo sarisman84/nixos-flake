@@ -1,36 +1,60 @@
 {
   pkgs,
   lib,
-  config,
   ...
 }: let
-  homeDir = config.home.homeDirectory;
+  # The Unity CLI is a single pre-built C# Native AOT binary, dynamically
+  # linked against glibc + libgcc and built outside Nix. NixOS stubs
+  # /lib64/ld-linux-x86-64.so.2, so a bare store copy cannot run: we patch
+  # the interpreter and RPATH to the store copies of glibc + libgcc (see
+  # fixupPhase below).
+  #
+  # Pinned to a specific version + sha256 (this reverses the old
+  # bootstrap + `unity self-update` model — see
+  # docs/adr/0003-unity-cli-replaces-hub.md). To update: bump `version` and
+  # `sha256` (from https://public-cdn.cloud.unity3d.com/hub/prod/cli/latest-beta.json)
+  # and rebuild.
+  unityCli = pkgs.stdenvNoCC.mkDerivation rec {
+    pname = "unity-cli";
+    version = "1.0.0-beta.14";
+
+    src = pkgs.fetchurl {
+      url = "https://public-cdn.cloud.unity3d.com/hub/prod/cli/${version}/unity-linux-x64";
+      sha256 = "d9a2c1716ce723b970898f7f40adc09cceee04e84ce2f1f1638f07ac3e9898aa";
+    };
+
+    dontConfigure = true;
+    dontBuild = true;
+    # src is a single pre-built binary (not an archive) — skip unpacking so
+    # $src is the file itself.
+    dontUnpack = true;
+
+    nativeBuildInputs = [pkgs.patchelf];
+
+    installPhase = ''
+      install -Dm755 "$src" "$out/bin/unity"
+    '';
+
+    # Make the pre-built binary runnable on NixOS: point its interpreter and
+    # RPATH at the store's glibc + libgcc (the system /lib64 loader is a stub
+    # that refuses generic dynamically-linked binaries).
+    fixupPhase = ''
+      ${pkgs.patchelf}/bin/patchelf \
+        --set-interpreter ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 \
+        --set-rpath "${pkgs.glibc}/lib:${pkgs.glibc}/lib64:${pkgs.libgcc}/lib" \
+        "$out/bin/unity"
+    '';
+
+    meta = with lib; {
+      description = "Unity command-line interface (official)";
+      homepage = "https://unity.com";
+      license = licenses.unfree;
+      platforms = ["x86_64-linux"];
+      mainProgram = "unity";
+    };
+  };
 in {
-  # The Unity CLI is deliberately NOT store-pinned: the flake guarantees its
-  # presence (the activation hook below), and `unity self-update` keeps it
-  # current. A pinned binary would go stale — the official skill warns an
-  # outdated CLI fails in confusing ways — and IDE support depends on a
-  # recent release. See docs/adr/0003-unity-cli-replaces-hub.md.
-
-  # The install script places the binary in ~/.local/bin, which is not on
-  # PATH by default on this system.
-  home.sessionVariables.PATH = ":${homeDir}/.local/bin";
-
-  # Bootstrap the CLI on first activation (or after a wiped ~/.local/bin).
-  # Idempotent: a no-op while the binary is present. Warns, never fails the
-  # deploy — a transient network blip must not break a system switch, and
-  # the next activation retries.
-  home.activation.unityCliBootstrap = lib.hm.dag.entryAfter ["linkGeneration"] ''
-    if [ ! -x "$HOME/.local/bin/unity" ]; then
-      echo "unity-cli: installing the Unity CLI..."
-      # The install script downloads the binary with a bare `curl`/`wget`
-      # from PATH (and may probe glibc via `ldd`), but the activation
-      # environment's PATH has neither — so put the store copies on PATH
-      # for the script's own runtime.
-      export PATH="${pkgs.curl}/bin:${pkgs.glibc}/bin:$PATH"
-      if ! ${pkgs.curl}/bin/curl -fsSL https://unity.com/install.sh | ${pkgs.bash}/bin/bash; then
-        echo "unity-cli: install failed; \`unity\` is not available. Re-run a deploy, or install manually: curl -fsSL https://unity.com/install.sh | bash" >&2
-      fi
-    fi
-  '';
+  # Store-provided, so `unity` is on PATH like any other home package — no
+  # ~/.local/bin PATH entry or activation-hook bootstrap is needed.
+  home.packages = [unityCli];
 }
