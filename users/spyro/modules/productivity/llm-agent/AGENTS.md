@@ -88,3 +88,9 @@ These instructions apply to all projects. They define how I (the agent) should w
 - **Size limit:** Keep each document small — target ~150 lines of text maximum. If a document would exceed the limit, split the content where it makes sense into a new document and reference it from the original (relative markdown link) instead of growing the original unboundedly.
   - The original document keeps a brief summary + a link to the split-out document.
   - Choose split points at natural topic boundaries (a section, a concern, a command group).
+
+## Unity
+
+- **CLI binary:** a store-pinned Nix package (`unity-cli`, defined in `users/spyro/modules/productivity/unity.nix`), on PATH like any other home package. It is deliberately **store-pinned** (this reverses the earlier bootstrap + `self-update` model — see `docs/adr/0003-unity-cli-replaces-hub.md`): to update it, bump `version` + `sha256` in `unity.nix` and redeploy. Do **not** run `unity self-update` — the store path is immutable, so it would fail.
+- **Agent skills:** the full official Unity skills collection (`Unity-Technologies/skills`) is installed user-global in `~/.agents/skills/` (opencode reads it alongside `~/.config/opencode/skills/`). Refresh with `npx skills update -g`.
+- **Editor:** the existing install (`~/Unity/Hub/Editor/6000.3.8f1`) is managed by the CLI in place (`unity editors`); IDEs (VSCode, Rider) are unaffected.
