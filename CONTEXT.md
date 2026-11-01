@@ -1,6 +1,6 @@
-# Context: Local LLM Serving
+# Context
 
-How local models are served, swapped, and de-allocated on this machine. Vocabulary for the `llm-agent` module.
+Domain vocabulary for this machine's tooling. Two areas: **local LLM serving** (how local models are served, swapped, and de-allocated; the `llm-agent` module) and **Unity tooling** (the CLI, Editor, and agent skills used to build Unity projects).
 
 ## Language
 
@@ -99,6 +99,32 @@ _Avoid_: ping, keepalive, liveness probe
 **hardware profile**
 RTX 5090 (32 GB VRAM), 64 GB system RAM, Ryzen 9950X3D. Constrains the maximum feasible `ctxSize` for a given weight size and `cacheType` combination.
 
+### Unity tooling
+
+**Unity CLI**
+The standalone `unity` command-line tool that manages Unity editors, projects, and licenses, and drives a running Editor. It is the interface to Unity on this machine, replacing Unity Hub.
+_Avoid_: Hub, the tool, unity binary
+
+**Hub CLI**
+The deprecated headless command-line interface to Unity Hub. Superseded by the **Unity CLI**; no longer used on this machine.
+_Avoid_: Unity CLI, hub command
+
+**Unity Hub**
+The Unity Hub desktop GUI for managing editors and projects. Removed from this machine; the **Unity CLI** is its replacement.
+_Avoid_: Hub, the app, the GUI
+
+**Pipeline package**
+The Editor-side component a Unity project installs to expose its running Editor to the **Unity CLI**. It is what lets the CLI drive a live Editor — create and edit GameObjects and scenes, run C#, enter Play mode — instead of hand-editing project files.
+_Avoid_: pipeline, the plugin, the bridge
+
+**editor install**
+A Unity Editor that lives under the standard editor path and is managed by the **Unity CLI** — installed, listed, and upgraded through it — as opposed to an Editor placed there by hand or by the old Hub.
+_Avoid_: editor, the editor, installed editor
+
+**Unity skill**
+An agent skill from the official Unity skills collection that teaches the coding agent how to use the **Unity CLI** and drive a running Editor. It loads on demand when a Unity task matches its description.
+_Avoid_: skill, the plugin, unity integration
+
 ---
 
-Decisions are recorded in [`docs/adr/`](./adr/). Registry structure is in [`docs/llm-agent/registry.md`](./llm-agent/registry.md); tuning guidance (which values, and why) is in [`docs/llm-agent/tuning.md`](./llm-agent/tuning.md).
+Decisions are recorded in [`docs/adr/`](./docs/adr/) — including [ADR-0003](./docs/adr/0003-unity-cli-replaces-hub.md) for the Unity CLI. Registry structure is in [`docs/llm-agent/registry.md`](./docs/llm-agent/registry.md); tuning guidance (which values, and why) is in [`docs/llm-agent/tuning.md`](./docs/llm-agent/tuning.md).
