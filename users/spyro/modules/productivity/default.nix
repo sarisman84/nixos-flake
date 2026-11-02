@@ -13,7 +13,7 @@
     ./web.nix
     ./neovim.nix
     ./openchamber
-    ./unity.nix
+    ./unity
   ];
 
   home = {
