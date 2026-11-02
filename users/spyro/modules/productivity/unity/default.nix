@@ -1,10 +1,21 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, pkgsStable, ... }:
 
 let
   # The self-contained unity package (CLI + Editor NixOS support). See
   # ./package.nix for the derivation; it is host-agnostic (the Editor version
   # and the active NVIDIA Vulkan ICD are discovered at runtime).
-  unityCli = (import ./package.nix) { inherit pkgs lib; };
+  #
+  # libxml2 and icu are pinned to the versions the Editor was built against
+  # (its binaries have hard NEEDED deps on libxml2.so.2 and libicu*.so.76,
+  # SONAMEs that current nixpkgs no longer provides — libxml2 2.15.x renamed
+  # the former to libxml2.so.16, icu 78 the latter to libicu*.so.78).
+  #   libxml2: pkgs.libxml2_13.out  (2.13.x, SONAME libxml2.so.2)
+  #   icu:     pkgsStable.icu       (76.1, SONAMEs libicu*.so.76)
+  unityCli = (import ./package.nix) {
+    inherit pkgs lib;
+    libxml2 = pkgs.libxml2_13.out;
+    icu = pkgsStable.icu;
+  };
 in
 {
   # Store-provided, so `unity` (and the `unity-editor` launcher + patchelf

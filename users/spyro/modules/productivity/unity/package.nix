@@ -1,4 +1,4 @@
-{ pkgs, lib }:
+{ pkgs, lib, libxml2, icu }:
 
 let
   # ---------------------------------------------------------------------------
@@ -35,6 +35,18 @@ let
   # The 64-bit system libs the Editor's binaries and .so files need, as
   # (symlink-name, store-path) pairs. All nixpkgs packages — resolved at build
   # time, not host-specific.
+  #
+  # Two classes of pinning, both forced by the Editor's hard NEEDED SONAMEs:
+  #   * libxml2 / icu are passed in (libxml2, icu) rather than taken from
+  #     pkgs, because the Editor links against specific SONAMEs that current
+  #     nixpkgs no longer provide: libxml2 2.15.x renamed libxml2.so.2 to
+  #     libxml2.so.16, and icu 78 renamed libicu*.so.76 to libicu*.so.78. The
+  #     caller pins the versions the Editor was built against (libxml2 2.13.x,
+  #     icu 76.1).
+  #   * glib / openssl / pango / fontconfig use an explicit output (.out /
+  #     .lib) because nixpkgs restructured their outputs: the default attr now
+  #     resolves to the -bin output (no lib/ dir), and the runtime libs moved
+  #     to the .out (glib/openssl/pango) or .lib (fontconfig) output.
   unityLibs = [
     { name = "libGL.so.1"; src = "${pkgs.libglvnd}/lib/libGL.so.1"; }
     { name = "libX11.so.6"; src = "${pkgs.libx11}/lib/libX11.so.6"; }
@@ -43,26 +55,26 @@ let
     { name = "libatk-1.0.so.0"; src = "${pkgs.at-spi2-core}/lib/libatk-1.0.so.0"; }
     { name = "libcairo.so.2"; src = "${pkgs.cairo}/lib/libcairo.so.2"; }
     { name = "libcairo-gobject.so.2"; src = "${pkgs.cairo}/lib/libcairo-gobject.so.2"; }
-    { name = "libcrypto.so"; src = "${pkgs.openssl}/lib/libcrypto.so"; }
-    { name = "libcrypto.so.3"; src = "${pkgs.openssl}/lib/libcrypto.so.3"; }
-    { name = "libfontconfig.so.1"; src = "${pkgs.fontconfig}/lib/libfontconfig.so.1"; }
+    { name = "libcrypto.so"; src = "${pkgs.openssl.out}/lib/libcrypto.so"; }
+    { name = "libcrypto.so.3"; src = "${pkgs.openssl.out}/lib/libcrypto.so.3"; }
+    { name = "libfontconfig.so.1"; src = "${pkgs.fontconfig.lib}/lib/libfontconfig.so.1"; }
     { name = "libgdk-3.so.0"; src = "${pkgs.gtk3}/lib/libgdk-3.so.0"; }
     { name = "libgdk_pixbuf-2.0.so.0"; src = "${pkgs.gdk-pixbuf}/lib/libgdk_pixbuf-2.0.so.0"; }
-    { name = "libgio-2.0.so.0"; src = "${pkgs.glib}/lib/libgio-2.0.so.0"; }
-    { name = "libglib-2.0.so.0"; src = "${pkgs.glib}/lib/libglib-2.0.so.0"; }
-    { name = "libgobject-2.0.so.0"; src = "${pkgs.glib}/lib/libgobject-2.0.so.0"; }
+    { name = "libgio-2.0.so.0"; src = "${pkgs.glib.out}/lib/libgio-2.0.so.0"; }
+    { name = "libglib-2.0.so.0"; src = "${pkgs.glib.out}/lib/libglib-2.0.so.0"; }
+    { name = "libgobject-2.0.so.0"; src = "${pkgs.glib.out}/lib/libgobject-2.0.so.0"; }
     { name = "libgtk-3.so.0"; src = "${pkgs.gtk3}/lib/libgtk-3.so.0"; }
     { name = "libharfbuzz.so.0"; src = "${pkgs.harfbuzz}/lib/libharfbuzz.so.0"; }
-    { name = "libicui18n.so.76"; src = "${pkgs.icu}/lib/libicui18n.so.76"; }
-    { name = "libicuuc.so.76"; src = "${pkgs.icu}/lib/libicuuc.so.76"; }
-    { name = "libpango-1.0.so.0"; src = "${pkgs.pango}/lib/libpango-1.0.so.0"; }
-    { name = "libpangocairo-1.0.so.0"; src = "${pkgs.pango}/lib/libpangocairo-1.0.so.0"; }
-    { name = "libssl.so"; src = "${pkgs.openssl}/lib/libssl.so"; }
-    { name = "libssl.so.3"; src = "${pkgs.openssl}/lib/libssl.so.3"; }
+    { name = "libicui18n.so.76"; src = "${icu}/lib/libicui18n.so.76"; }
+    { name = "libicuuc.so.76"; src = "${icu}/lib/libicuuc.so.76"; }
+    { name = "libpango-1.0.so.0"; src = "${pkgs.pango.out}/lib/libpango-1.0.so.0"; }
+    { name = "libpangocairo-1.0.so.0"; src = "${pkgs.pango.out}/lib/libpangocairo-1.0.so.0"; }
+    { name = "libssl.so"; src = "${pkgs.openssl.out}/lib/libssl.so"; }
+    { name = "libssl.so.3"; src = "${pkgs.openssl.out}/lib/libssl.so.3"; }
     { name = "libstdc++.so.6"; src = "${pkgs.gcc.cc.lib}/lib/libstdc++.so.6"; }
     { name = "libudev.so.1"; src = "${pkgs.systemd}/lib/libudev.so.1"; }
     { name = "libvulkan.so.1"; src = "${pkgs.vulkan-loader}/lib/libvulkan.so.1"; }
-    { name = "libxml2.so.2"; src = "${pkgs.libxml2}/lib/libxml2.so.2"; }
+    { name = "libxml2.so.2"; src = "${libxml2}/lib/libxml2.so.2"; }
     { name = "libz.so.1"; src = "${pkgs.zlib}/lib/libz.so.1"; }
   ];
 
@@ -110,7 +122,12 @@ let
     # Editor's own libs + the system libs (via the symlink dir).
     export LD_LIBRARY_PATH="''${EDITOR_DIR}:''${LIBDIR}''${LD_LIBRARY_PATH:+:''${LD_LIBRARY_PATH}}"
     export DISPLAY="''${DISPLAY:-:0}"
-    export XAUTHORITY="''${XAUTHORITY:-/run/user/$(id -u)/xauth_*}"
+    # The XAUTHORITY glob is not expanded in a variable assignment, so resolve
+    # it explicitly (the file is regenerated on every login, so the name varies).
+    if [ -z "''${XAUTHORITY:-}" ]; then
+      XAUTHORITY="$(ls /run/user/$(id -u)/xauth_* 2>/dev/null | head -1 || true)"
+    fi
+    [ -n "''${XAUTHORITY:-}" ] && export XAUTHORITY
     # The system is Wayland (sddm). Without WAYLAND_DISPLAY the Editor can't
     # find the socket and falls back to X11, which it then fails to use
     # ("Selected window backend: (null)").
@@ -194,7 +211,7 @@ let
       "$EDITOR_DIR/Data/netcorerun" "$EDITOR_DIR/Data/il2cpp" \
       "$EDITOR_DIR/Data/PlaybackEngines")
 
-    patched=0 refreshed=0 libpatched=0 libskipped=0
+    patched=0 refreshed=0 libpatched=0 libskipped=0 failed=0
     while read -r f; do
       case "$f" in
         *.so*|*.debug|*.pdb|*.dll|*.orig|*.a|*.txt|*.json|*.xml|*.html|*.meta|*.cs \
@@ -206,15 +223,30 @@ let
       case "$interp" in
         /nix/store/*glibc-*)
           # Already patched; refresh the RPATH (original rpath + libs dir).
-          "$PATCHELF" --set-rpath "$(rpath_for "$f")" "$f"
-          refreshed=$((refreshed+1))
+          # Some sub-binaries (7za, mono, node, ...) have an ELF layout that
+          # trips patchelf's shiftFile assertion (exit 134); skip those rather
+          # than aborting the whole pass (set -e would stop the script).
+          if ! "$PATCHELF" --set-rpath "$(rpath_for "$f")" "$f" 2>/dev/null; then
+            echo "unity-editor-patchelf: warning: patchelf failed on $f (skipped)" >&2
+            failed=$((failed+1))
+          else
+            refreshed=$((refreshed+1))
+          fi
           continue ;;
       esac
       # Not yet patched: back up the original (once), set interpreter + RPATH.
       [ -f "$f.orig" ] || cp -p "$f" "$f.orig"
-      "$PATCHELF" --set-interpreter "$GLIBC_LD" "$f"
-      "$PATCHELF" --set-rpath "$(rpath_for "$f")" "$f"
-      patched=$((patched+1))
+      if ! "$PATCHELF" --set-interpreter "$GLIBC_LD" "$f" 2>/dev/null; then
+        echo "unity-editor-patchelf: warning: patchelf --set-interpreter failed on $f (skipped)" >&2
+        failed=$((failed+1))
+        continue
+      fi
+      if ! "$PATCHELF" --set-rpath "$(rpath_for "$f")" "$f" 2>/dev/null; then
+        echo "unity-editor-patchelf: warning: patchelf --set-rpath failed on $f (skipped)" >&2
+        failed=$((failed+1))
+      else
+        patched=$((patched+1))
+      fi
     done < <(find "''${SEARCH_DIRS[@]}" -type f 2>/dev/null)
 
     # Pass 2: .so files (RPATH only).
@@ -231,7 +263,7 @@ let
       libpatched=$((libpatched+1))
     done < <(find "''${SEARCH_DIRS[@]}" -type f \( -name "*.so" -o -name "*.so.*" \) 2>/dev/null)
 
-    echo "unity-editor-patchelf: done (exec patched=$patched rpath-refreshed=$refreshed; .so patched=$libpatched skipped=$libskipped)"
+    echo "unity-editor-patchelf: done (exec patched=$patched rpath-refreshed=$refreshed failed=$failed; .so patched=$libpatched skipped=$libskipped)"
   '';
 in
 pkgs.stdenvNoCC.mkDerivation {
