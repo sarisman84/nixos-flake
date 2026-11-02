@@ -1,6 +1,8 @@
+{ pkgsStable, ... }:
 {
   programs = {
     chromium = {
+      package = pkgsStable.chromium;
       enable = true;
       extensions = [
         { id = "nngceckbapebfimnlniiiahkandclblb"; } # Bitwarden
