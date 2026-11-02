@@ -1,5 +1,4 @@
-{ pkgs, ... }:
-{
+{pkgs, ...}: {
   imports = [
     ./gamedev.nix
     ./git.nix
@@ -14,6 +13,7 @@
     ./web.nix
     ./neovim.nix
     ./openchamber
+    ./unity
   ];
 
   home = {

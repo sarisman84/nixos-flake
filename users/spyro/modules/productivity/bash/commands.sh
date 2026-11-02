@@ -6,4 +6,5 @@ if [ -n "${BASH_SOURCE[0]}" ] && [ -f "$(dirname "${BASH_SOURCE[0]}")/config.sh"
     source "$(dirname "${BASH_SOURCE[0]}")/config.sh"
     source "$(dirname "${BASH_SOURCE[0]}")/git-commands.sh"
     source "$(dirname "${BASH_SOURCE[0]}")/system-tools.sh"
+    source "$(dirname "${BASH_SOURCE[0]}")/services.sh"
 fi
