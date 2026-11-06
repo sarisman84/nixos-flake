@@ -42,6 +42,7 @@ in
       packwiz
       #pcsx2
       # nix-citizen.rsi-launcher
+      wowup-cf
     ];
   };
 
