@@ -16,6 +16,14 @@
         if permInsPkgs != null
         then permInsPkgs
         else [];
+      # gtk2 is marked broken upstream (removal planned before NixOS 27.05,
+      # https://github.com/NixOS/nixpkgs/issues/410814). It is still in the
+      # closure via lutris (whose buildFHSEnv rootfs links it), and nixpkgs'
+      # default problems matcher turns "broken" into an evaluation error, so
+      # downgrade it to a warning until lutris drops gtk2.
+      problems.handlers = {
+        "gtk+".broken = "warn";
+      };
     };
 
     unstable = import nixpkgs {
