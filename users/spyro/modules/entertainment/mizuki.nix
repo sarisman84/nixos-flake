@@ -9,7 +9,7 @@ let
 
   src = pkgs.fetchurl {
     url = "https://github.com/Anisurge/App/releases/download/v${version}/Mizuki-linux-amd64-portable.zip";
-    sha256 = "12457bd0aa434dc42933ffc8ddce21ae3ae8599581968394eca5af5dfbde4eef";
+    sha256 = "sha256-EkV70KpDTcQpM//I3c4hrjroWZWBloOU7KWvXfveTu8=";
   };
 
   # System libraries the bundled mpv and JBR resolve at runtime
