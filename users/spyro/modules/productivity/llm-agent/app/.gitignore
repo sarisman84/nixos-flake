@@ -1,0 +1,6 @@
+# The compiled single binary (build output; rebuild with ./build.sh).
+/llm-agent
+
+# The UI's node toolchain and build output (rebuild with ./build.sh).
+ui/node_modules/
+ui/dist/
