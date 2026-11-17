@@ -35,17 +35,24 @@
 ${seamImport}"] ["
 "] pluginSource;
 
-  # opencode invokes EVERY function export in a plugin file as a plugin
-  # factory. The spliced seam brings `createUnloadPolicy`, `isRepeatUnload`
-  # and `shouldUnload` along as exports; called with a single plugin input,
-  # `createUnloadPolicy` throws on `config.idleThresholdSeconds` and poisons
-  # the whole file load — so the real entry never runs and the only symptom is
-  # a missing heartbeat. The deployed copy therefore exports exactly one
-  # function. Tests import the helpers from the repo sources, never from here.
+  # The v2 loader reads only the `default` export (`{ id, setup }`), so the
+  # v1 hazard — opencode invoking every function export as a plugin factory —
+  # is gone. The spliced seam still brings `createUnloadPolicy`,
+  # `isRepeatUnload` and `shouldUnload` along, so they are de-exported to keep
+  # the deployed module clean: the single entry is the default export. Tests
+  # import the helpers from the repo sources, never from here.
   deployedSource =
     builtins.replaceStrings
-    ["export function createUnloadPolicy(" "export { isRepeatUnload, shouldUnload }"]
-    ["function createUnloadPolicy(" ""]
+    [
+      "export function createUnloadPolicy("
+      "export { isRepeatUnload, shouldUnload }"
+      "export type { Decision, InflightEntry, Lease, LeaseSet, Policy, Reason }"
+    ]
+    [
+      "function createUnloadPolicy("
+      ""
+      ""
+    ]
     (decisionSource + "
 " + pluginWithoutSeamImport);
 
@@ -62,10 +69,10 @@ ${seamImport}"] ["
     "the deployed plugin must not reference ./decision.js: it is spliced in, and a live import would resolve against the Nix store and fail to load silently"
     ++ errIf (pluginWithoutSeamImport != pluginSource)
     "the deployed plugin must still contain plugin.ts's source: the seam import it strips was reformatted, so the splice is no longer sound"
-    ++ errIf (lib.hasInfix "function shouldUnload" pluginEntry && lib.hasInfix "LlmAgentUnloadPolicy" pluginEntry)
+    ++ errIf (lib.hasInfix "function shouldUnload" pluginEntry && lib.hasInfix "llm-agent-unload-policy" pluginEntry)
     "the deployed plugin must carry both the decision seam and the plugin entry"
-    ++ errIf (!(lib.hasInfix "export function" pluginEntry) && !(lib.hasInfix "export {" pluginEntry))
-    "the deployed plugin must export exactly one function: opencode invokes every function export as a plugin factory, and a second one throws on its missing config and poisons the whole file load";
+    ++ errIf (!(lib.hasInfix "export function" pluginEntry) && !(lib.hasInfix "export {" pluginEntry) && !(lib.hasInfix "export const" pluginEntry))
+    "the deployed plugin must have no named exports: the v2 entry is the default export, and a leftover named export means the splice de-exported the wrong thing";
 in {
   inherit
     pluginEntry

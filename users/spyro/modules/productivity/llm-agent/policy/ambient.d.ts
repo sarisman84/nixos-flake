@@ -1,28 +1,20 @@
 /**
- * The slice of the host runtime this policy uses, declared locally.
+ * The slice of the *runtime* this policy uses, declared locally.
  *
- * The flake has no network at evaluation time and `@opencode-ai/plugin` is not
- * in the store, so this module cannot take a type dependency on the published
- * opencode types. Rather than import types it cannot resolve, it declares the
- * handful of shapes it touches.
+ * The flake has no network at evaluation time and the published opencode types
+ * are not in the store, so this module cannot take a type dependency on them.
+ * Rather than import types it cannot resolve, it declares the handful of
+ * node/bun/process shapes it touches.
  *
- * These declarations were checked against opencode 1.18.31 by running a probe
- * plugin against the real binary, not read off documentation:
+ * The opencode *host API* shapes (the v2 plugin context, the event envelope,
+ * the `context` hook) are inlined in `plugin.ts` next to the code that reads
+ * them, with the host facts documented there. Keeping them local to the reader
+ * means a host change shows up at the exact line that breaks, not in a shared
+ * declaration that drifts.
  *
- *   - `session.status` carries `{ sessionID, status: { type: "busy" | "idle" | "retry" } }`.
- *   - `message.part.updated` / `message.updated` carry a **top-level** `sessionID`
- *     alongside `part` / `info`. The published SDK types omit it, so this was
- *     probed rather than assumed — reading `info.sessionID` instead is a
- *     permanent no-op in production.
- *   - `chat.params` carries `model.providerID` / `model.id`.
- *   - `chat.message` does *not* carry a model — its `model` is absent, which is
- *     why model selection is read from `chat.params`.
- *   - `client.app.log({ body: { service, level, message, extra } })`.
- *   - The plugin factory is called more than once per process, so it must be
- *     idempotent about side effects.
- *
- * If a future opencode moves one of these, `nix flake check` will still pass —
- * this file is the reason to re-probe rather than trust the build.
+ * If a future opencode or bun moves one of these runtime shapes, `nix flake
+ * check` will still pass — this file is the reason to re-probe rather than
+ * trust the build.
  */
 
 declare module "bun:test" {
@@ -43,7 +35,7 @@ declare module "node:fs" {
   export function existsSync(path: string): boolean
   export function readdirSync(path: string): string[]
   export function readFileSync(path: string, encoding: "utf8"): string
-  export function writeFileSync(path: string, data: string, options?: { mode?: number }): void
+  export function writeFileSync(path: string, data: string, options?: { mode?: number; flag?: string }): void
   export function renameSync(from: string, to: string): void
   export function rmSync(path: string, options: { force?: boolean; recursive?: boolean }): void
 }
@@ -66,9 +58,19 @@ declare const process: {
 
 declare function setInterval(handler: () => void, ms: number): { unref(): void }
 declare function clearInterval(handle: { unref(): void }): void
+declare function setTimeout(handler: () => void, ms?: number): number
+declare function clearTimeout(handle: number): void
 declare function fetch(
   url: string,
   init?: { method?: string; signal?: AbortSignal },
 ): Promise<{ ok: boolean; status: number }>
+
+declare class AbortController {
+  readonly signal: AbortSignal
+  abort(): void
+}
+declare interface AbortSignal {
+  readonly aborted: boolean
+}
 
 declare const console: { log(...args: unknown[]): void }
