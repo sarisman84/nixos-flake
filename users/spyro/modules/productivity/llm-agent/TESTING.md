@@ -127,10 +127,11 @@ cat "$state/heartbeat.json"                      # written when the plugin loads
 ls   "$state/leases/"                            # one lease per live instance
 ```
 
-The heartbeat matters because opencode discards the cause of a plugin load
-failure: a plugin that throws on import produces no log at any level. **A missing
-or stale heartbeat means the policy is not running**, which is otherwise
-indistinguishable from "nothing needed unloading".
+The heartbeat matters because a plugin that loads but never heartbeats is a
+silent no-op, indistinguishable from "nothing needed unloading". v2 logs a load
+failure as a `failed to load plugin` WARN in
+`~/.local/share/opencode/log/opencode.log`, but a plugin that loads and then
+stalls is not. **A missing or stale heartbeat means the policy is not running.**
 
 It has already caught a real one. The plugin was first deployed as an entry file
 re-exporting `../llm-agent/plugin.js`, but Home Manager compiles each `home.file`
@@ -142,10 +143,12 @@ policy logic.**
 
 ### Watching a decision
 
-`client.app.log` entries carry the reason. To see them:
+The policy writes its own log (the v2 context has no host log to write to). To
+see the decisions:
 
 ```bash
-opencode --print-logs --log-level DEBUG 2>&1 | grep "unload decision"
+state="${XDG_STATE_HOME:-$HOME/.local/state}/llm-agent"
+tail -f "$state/policy.log" | grep "unload decision"
 ```
 
 Reasons, all of which mean *do not unload* unless stated:
