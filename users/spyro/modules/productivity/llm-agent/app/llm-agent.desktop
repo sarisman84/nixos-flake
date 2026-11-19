@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=llm-agent
+GenericName=LLM registry editor
+Comment=Edit and apply the llm-agent model registry (127.0.0.1:8090)
+Exec=llm-agent serve
+Terminal=false
+Categories=Development;Utility;
+Keywords=llm;model;registry;llama;opencode;

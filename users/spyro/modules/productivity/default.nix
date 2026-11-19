@@ -22,10 +22,11 @@
       go
       python3
       unzip
-      anydesk
+      #anydesk
       docker
       docker-compose
       docker-compose-language-service
+      penpot-desktop
     ];
   };
 }

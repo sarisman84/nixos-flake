@@ -1,6 +1,6 @@
 # Context
 
-Domain vocabulary for this machine's tooling. Two areas: **local LLM serving** (how local models are served, swapped, and de-allocated; the `llm-agent` module) and **Unity tooling** (the CLI, Editor, and agent skills used to build Unity projects).
+Domain vocabulary for this machine's tooling. Three areas: **local LLM serving** (how local models are served, swapped, and de-allocated; the `llm-agent` module), **Unity tooling** (the CLI, Editor, and agent skills used to build Unity projects), and **Penpot** (the self-hosted design tool packaged as a local application).
 
 ## Language
 
@@ -125,6 +125,20 @@ _Avoid_: editor, the editor, installed editor
 An agent skill from the official Unity skills collection that teaches the coding agent how to use the **Unity CLI** and drive a running Editor. It loads on demand when a Unity task matches its description.
 _Avoid_: skill, the plugin, unity integration
 
+### Penpot
+
+**penpot bundle**
+The prebuilt penpot artifacts — backend fat jar + its jlinked JRE, frontend statics + nginx config template, exporter bundle + its Chromium build, mcp bundle — extracted from the official Docker images and pinned by image digest. The unit of versioning: bumping the penpot version means re-pinning the bundle.
+_Avoid_: penpot package, the build, the images
+
+**penpot stack**
+The full set of penpot services — frontend (nginx), backend (Clojure jar), exporter, mcp, PostgreSQL, Valkey — running as children of a single systemd user unit. Started on demand, not at login; data lives in `~/.local/state/penpot/`.
+_Avoid_: penpot service, the server, the app
+
+**launcher**
+The `.desktop` entry's script: starts the **penpot stack** if it is not running, waits until the frontend answers on its port, then opens the browser. Idempotent — clicking it on a cold machine just works.
+_Avoid_: shortcut, the app, the entry
+
 ---
 
-Decisions are recorded in [`docs/adr/`](./docs/adr/) — including [ADR-0003](./docs/adr/0003-unity-cli-replaces-hub.md) for the Unity CLI. Registry structure is in [`docs/llm-agent/registry.md`](./docs/llm-agent/registry.md); tuning guidance (which values, and why) is in [`docs/llm-agent/tuning.md`](./docs/llm-agent/tuning.md).
+Decisions are recorded in [`docs/adr/`](./docs/adr/) — including [ADR-0003](./docs/adr/0003-unity-cli-replaces-hub.md) for the Unity CLI and [ADR-0004](./docs/adr/0004-penpot-bundle-via-docker-extraction.md) for the penpot bundle. Registry structure is in [`docs/llm-agent/registry.md`](./docs/llm-agent/registry.md); tuning guidance (which values, and why) is in [`docs/llm-agent/tuning.md`](./docs/llm-agent/tuning.md). Penpot design and research are in [`docs/penpot/`](./penpot/).
