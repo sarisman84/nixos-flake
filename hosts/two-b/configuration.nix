@@ -24,7 +24,6 @@
   # Enable CUPS to print documents.
   services.printing.enable = true;
 
-
   environment.variables.EDITOR = "vim";
   programs.mtr.enable = true;
 
@@ -43,7 +42,6 @@
     };
     polkit.settings.Polkitd.ExpirationSeconds = 1800;
   };
-
   # Some programs need SUID wrappers, can be configured further or are
   # started in user sessions.
   # programs.mtr.enable = true;
