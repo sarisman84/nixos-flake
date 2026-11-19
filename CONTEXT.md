@@ -4,7 +4,9 @@ Domain vocabulary for this machine's tooling. Two areas: **local LLM serving** (
 
 ## Language
 
-### The registry
+### The registry (historical)
+
+The definitions below describe the retired flake registry and its OpenCode unload plugin. Current model configuration and residency are managed directly by `llama-swap`.
 
 **model entry**
 A single model configuration in the JSON registry. Identity is the **model key**; `displayName` is cosmetic and never transmitted. `hfRef` and `options` are the other fields. All tunables live under `options`.
@@ -127,4 +129,4 @@ _Avoid_: skill, the plugin, unity integration
 
 ---
 
-Decisions are recorded in [`docs/adr/`](./docs/adr/) — including [ADR-0003](./docs/adr/0003-unity-cli-replaces-hub.md) for the Unity CLI. Registry structure is in [`docs/llm-agent/registry.md`](./docs/llm-agent/registry.md); tuning guidance (which values, and why) is in [`docs/llm-agent/tuning.md`](./docs/llm-agent/tuning.md).
+Decisions are recorded in [`docs/adr/`](./docs/adr/) — including [ADR-0003](./docs/adr/0003-unity-cli-replaces-hub.md) for the Unity CLI.

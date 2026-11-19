@@ -1,5 +1,7 @@
 # Plugin-owned unload policy over llama-swap's native TTL
 
+**Retired.** The flake now runs upstream `llama-swap`; it no longer installs an OpenCode unload plugin. The decision below is historical.
+
 llama-swap can unload an idle **resident model** itself via per-model `ttl` / `globalTTL`. We deliberately do not use it as the primary mechanism. A systemd user service owns the backend (see `0001-always-on-llama-swap-backend.md`), and an opencode plugin owns when the resident model is unloaded. `globalTTL` is set to 1800 s as a failsafe floor only.
 
 > **Status: partly built (#49).** The plugin, the lease and the heartbeat exist, and a session going idle past the threshold does unload the resident model. Still to come: the failsafe floor (#53), the backend's in-flight stream as the authority (#50), cloud-selection release (#51), and cross-instance arbitration under a lock (#52). `globalTTL` is still `0`. This ADR records the whole decision so the floor is not later mistaken for an oversight.

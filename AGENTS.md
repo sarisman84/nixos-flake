@@ -54,7 +54,7 @@ AGENTS.md                  # this file
 
 - Add a host → `hosts/<name>/` with `host.nix` (declare `spyroFlake.hosts.<name>`) + `configuration.nix` + any `.nix` modules; add the user's host to `host.nix`'s `users` list.
 - Add a user module → drop a `.nix` file into `users/<user>/modules/`; it's auto-imported by `builder.nix` via `getNixFileNames`.
-- `pkgs` = nixos-unstable; `pkgsStable` = nixos-26.05. `llama-cpp` (used by `llm-agent`) tracks nixos-unstable (v0.5.0 at the current lock); the registry's flag list is validated against it, so re-verify `default.nix`'s flag lists after `nix flake update`.
+- `pkgs` = nixos-unstable; `pkgsStable` = nixos-26.05.
 - Never commit `env/*.env` (gitignored; holds API keys).
 
 ## Version Control
@@ -110,20 +110,15 @@ sudo nixos-rebuild switch --flake ~/config/nixos-flake/#two-b --show-trace
 ```bash
 nix develop .           # enter devShell
 ```
-Packages available: `nix`, `git`, `alejandra`, `shellcheck`, `jq`, `bun`, `typescript`.
-- Run the llm-agent unload-policy tests: `bun test users/spyro/modules/productivity/llm-agent/policy`
-- Typecheck them: `cd users/spyro/modules/productivity/llm-agent/policy && tsc --noEmit -p tsconfig.json`
+Packages available: `nix`, `git`, `alejandra`, `shellcheck`, `jq`.
 - Format a file: `alejandra --format <file>` (repo is *not* currently alejandra-formatted — only format files you touch).
 - Check formatting: `alejandra --check <file>`.
 - Validate shell scripts: `shellcheck <file>`.
 
 ## Gotchas
 
-- The `llama-swap` backend is a systemd user service (always on — see `docs/adr/0001-always-on-llama-swap-backend.md`). Check it with `systemctl --user status llama-swap`; reload its generated config with `systemctl --user restart llama-swap`. It keeps its model registry in memory, and a registry-only deploy leaves its unit file byte-identical, so systemd would never restart it on its own — the home-manager activation hook (`llamaAgentEnv` in `llm-agent/default.nix`) therefore restarts it on every deploy. If a deploy runs outside a user session the restart is skipped with a warning and a manual `systemctl --user restart llama-swap` is still needed. There is **no** `opencode` wrapper: `opencode` is the raw binary, so `--model`/`--cloud`/`opencode models` no longer exist (use `opencode --model llama.cpp/<key>`).
-- The unload policy is a single self-contained opencode plugin at `~/.config/opencode/plugins/llm-agent-unload.ts` — **not** split across files, because `home.file.<name>.text` flattens each file to its own store path and a relative import then resolves against `/nix/store` and fails silently. The seam is still authored separately in `policy/decision.ts` and spliced in at build time. Its heartbeat is `$XDG_STATE_HOME/llm-agent/heartbeat.json` (default `~/.local/state/llm-agent/`) — **a missing heartbeat means the plugin failed to load**, because opencode silently discards plugin load failures. Its thresholds are registry data: `unloadPolicy` in `config.json`. See `docs/adr/0002-plugin-owned-unload-policy.md` and `users/spyro/modules/productivity/llm-agent/TESTING.md`.
-- Two facts about the opencode plugin host, established by probing 1.18.31 and recorded in `policy/ambient.d.ts`: the plugin factory is called **more than once per process** (hence the singleton guard), and `chat.message` carries **no** model while `chat.params` does.
-- API keys in `env/*.env` are rendered at activation into `~/.config/environment.d/50-llm-agent.conf` (mode 600) so the systemd user manager passes them to GUI apps — a profile hook reaches the CLI but **not** `opencode-desktop`. Deliberately not `home.sessionVariables`, which would bake them into the Nix store. After changing a key, re-activate or restart the user manager.
+- Configure models and native TTL in `~/.config/llama-swap/config.yaml`, then run `systemctl --user restart llama-swap`. The `llama-swap` launcher opens the local web UI.
 - `env/*.env` files are gitignored (API keys for figma/stitch). Never commit or read secrets into flake output.
 - `sudo` is actually `run0` with `enableSudoAlias` and `wheelNeedsPassword = true` — deploy commands prompt for a password and won't run unattended.
-- `opencode.json` is managed via Home Manager; symlinked into `~/.config/opencode/opencode.json`.
+- OpenCode settings, including MCP servers, are user-managed in `~/.config/opencode/`.
 - `AGENTS.md` (the persistent agent instructions) is flake-managed: source is `users/spyro/modules/productivity/llm-agent/AGENTS.md`, deployed to `~/.config/opencode/AGENTS.md`. Edit the source in the flake, not the deployed copy. Note: `nix flake check` evaluates from a git-derived store path, so **untracked** files won't appear there — commit before checking.
