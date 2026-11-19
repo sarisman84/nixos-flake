@@ -38,4 +38,14 @@ in
     };
     Install.WantedBy = [ "default.target" ];
   };
+
+  # App-menu launcher that opens the dashboard in the browser (the service
+  # runs headless). Mirrors the llama-swap desktop entry.
+  xdg.desktopEntries.modeldesk = {
+    name = "modeldesk";
+    comment = "Open the local modeldesk dashboard";
+    exec = "${pkgs.xdg-utils}/bin/xdg-open http://127.0.0.1:${toString port}/";
+    icon = "web-browser";
+    categories = [ "Development" ];
+  };
 }
