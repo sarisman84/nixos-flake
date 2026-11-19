@@ -37,6 +37,8 @@
     };
 
     openchamber.url = "github:sarisman84/openchamber-nix";
+
+    modeldesk.url = "github:sarisman84/modeldesk";
   };
 
   outputs = inputs @ {

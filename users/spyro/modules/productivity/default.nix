@@ -14,6 +14,7 @@
     ./neovim.nix
     ./openchamber
     ./unity
+    ./modeldesk.nix
   ];
 
   home = {
