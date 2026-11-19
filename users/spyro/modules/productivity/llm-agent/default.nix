@@ -20,11 +20,5 @@ in {
     Install.WantedBy = ["default.target"];
   };
 
-  xdg.desktopEntries.llama-swap = {
-    name = "llama-swap";
-    comment = "Open the local llama-swap web interface";
-    exec = "${pkgs.xdg-utils}/bin/xdg-open http://${listen}/ui/";
-    icon = "web-browser";
-    categories = ["Development"];
-  };
+  xdg.desktopEntries.llama-swap = import ./desktop-entry.nix {inherit pkgs listen;};
 }
