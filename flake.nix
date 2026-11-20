@@ -38,6 +38,11 @@
 
     openchamber.url = "github:sarisman84/openchamber-nix";
 
+    penpot-mcp = {
+      url = "github:sarisman84/penpot-mcp-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     modeldesk.url = "github:sarisman84/modeldesk";
   };
 
