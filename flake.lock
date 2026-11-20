@@ -460,6 +460,26 @@
         "type": "github"
       }
     },
+    "penpot-mcp": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1795166440,
+        "narHash": "sha256-fyUOX4SZNYCAFP0HH8rH8hKodtjkkl80GQLUV9OQNKI=",
+        "owner": "sarisman84",
+        "repo": "penpot-mcp-nix",
+        "rev": "48b4f2827bc3ad6a13b0a298f6f9ae7dcfb80809",
+        "type": "github"
+      },
+      "original": {
+        "owner": "sarisman84",
+        "repo": "penpot-mcp-nix",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
         "anime-launchers": "anime-launchers",
@@ -472,7 +492,8 @@
         "nixpkgs-stable": "nixpkgs-stable",
         "noctalia": "noctalia",
         "nuhxboard": "nuhxboard",
-        "openchamber": "openchamber"
+        "openchamber": "openchamber",
+        "penpot-mcp": "penpot-mcp"
       }
     },
     "rust-overlay": {
